@@ -11,6 +11,7 @@ import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/waveform_view.dart';
 import '../../models/recording.dart';
 import '../../services/audio_recorder_service.dart';
+import '../../services/notification_service.dart';
 import '../../services/recording_repository.dart';
 import '../editing/editing_screen.dart';
 
@@ -31,6 +32,7 @@ class _RecordScreenState extends State<RecordScreen>
     with TickerProviderStateMixin {
   final AudioRecorderService _recorder = AudioRecorderService();
   final RecordingRepository _repository = RecordingRepository();
+  final NotificationService _notifications = NotificationService();
 
   late final AnimationController _orbController = AnimationController(
     vsync: this,
@@ -58,6 +60,30 @@ class _RecordScreenState extends State<RecordScreen>
   void initState() {
     super.initState();
     _restoreTranscript();
+    _initNotifications();
+  }
+
+  /// Prepara a notificacao persistente e o registro das acoes rapidas.
+  Future<void> _initNotifications() async {
+    await _notifications.initialize(
+      actionCallback: _handleRecorderAction,
+    );
+    await _notifications.requestPermission();
+  }
+
+  /// Traduz as acoes da notificacao em operacoes do gravador.
+  Future<void> _handleRecorderAction(RecorderAction action) async {
+    if (!mounted) return;
+    switch (action) {
+      case RecorderAction.pause:
+        await _pauseRecording();
+      case RecorderAction.resume:
+        await _resumeRecording();
+      case RecorderAction.stop:
+        await _stopRecording();
+      case RecorderAction.restart:
+        _restartTimer();
+    }
   }
 
   Future<void> _restoreTranscript() async {
@@ -75,6 +101,7 @@ class _RecordScreenState extends State<RecordScreen>
   void dispose() {
     _ampSub?.cancel();
     _ticker?.cancel();
+    _notifications.stopTicker();
     _recorder.dispose();
     _orbController.dispose();
     super.dispose();
