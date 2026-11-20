@@ -20,7 +20,7 @@ import io.flutter.plugin.common.MethodChannel
  *
  * A notificacao publicada aqui e a mesma que o app Dart atualiza a cada
  * segundo com o tempo decorrido. Os botoes de acao rapida (pausar,
- * continuar, parar) sao entregues de volta ao Dart por [actionChannel].
+ * continuar, parar) sao entregues de volta ao Dart por [ACTION_CHANNEL].
  */
 class RecordingService : Service() {
 
@@ -35,6 +35,9 @@ class RecordingService : Service() {
         const val ACTION_RESUME = "resume"
         const val ACTION_STOP = "stop"
         const val ACTION_RESTART = "restart"
+
+        /** Identificador do motor Flutter registrado pelo app Dart. */
+        const val ENGINE_ID = "scrott_engine"
     }
 
     private var channel: MethodChannel? = null
@@ -47,6 +50,16 @@ class RecordingService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val action = intent?.action
+
+        // Acao vinda do botao da notificacao: repassa ao Dart e encerra.
+        if (action != null) {
+            dispatchToFlutter(action)
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
+        // Demais inicios: atualiza a notificacao de primeiro plano.
         val elapsed = intent?.getStringExtra("elapsed") ?: "00:00"
         val paused = intent?.getBooleanExtra("paused", false) ?: false
         startForeground(NOTIFICATION_ID, buildNotification(elapsed, paused))
@@ -76,7 +89,7 @@ class RecordingService : Service() {
         manager.createNotificationChannel(channel)
     }
 
-    /** Monta a notificacao com os botoes de acao rapida. */
+    /** Monta a notificacao com os botoes de acao rapido. */
     private fun buildNotification(elapsed: String, paused: Boolean): Notification {
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(elapsed)
@@ -142,24 +155,10 @@ class RecordingService : Service() {
         )
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val action = intent?.action
-        if (action != null) {
-            dispatchToFlutter(action)
-            stopSelf()
-            return START_NOT_STICKY
-        }
-        return super.onStartCommand(intent, flags, startId)
-    }
-
     /** Encaminha a acao para o motor Flutter, se ele estiver vivo. */
     private fun dispatchToFlutter(action: String) {
         val engine = FlutterEngineCache.getInstance().get(ENGINE_ID) ?: return
         channel = MethodChannel(engine.dartExecutor.binaryMessenger, ACTION_CHANNEL)
         channel?.invokeMethod("recorderAction", action)
-    }
-
-    companion object EngineHolder {
-        const val ENGINE_ID = "scrott_engine"
     }
 }
