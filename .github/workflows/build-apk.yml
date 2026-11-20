@@ -96,12 +96,21 @@ jobs:
         env:
           BUILD_TYPE: ${{ github.event.inputs.build_type || 'debug' }}
         run: |
-          set -euo pipefail
+          set -uo pipefail
           if [ "$BUILD_TYPE" = "release" ]; then
-            flutter build apk --release --split-per-abi
+            flutter build apk --release --split-per-abi 2>&1 | tee build.log
           else
-            flutter build apk --debug
+            flutter build apk --debug 2>&1 | tee build.log
           fi
+          STATUS=${PIPESTATUS[0]}
+          # Preserva a saída do build no resumo da execução, mesmo em falha.
+          {
+            echo "### Resultado do build (\`$BUILD_TYPE\`)"
+            echo '```'
+            tail -n 150 build.log 2>/dev/null || echo "(sem build.log)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit $STATUS
 
       # ---------------------------------------------------------------
       # 5. Artefato baixável

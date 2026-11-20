@@ -309,10 +309,10 @@ class _WaveformPainter extends CustomPainter {
         end: Alignment.bottomRight,
         colors: [
           _meshGradient[layer % _meshGradient.length]
-              .withValues(alpha: 0.25 + layer * 0.06),
-          AppColors.waveCyan.withValues(alpha: 0.10),
+              .withValues(alpha: 0.55 + layer * 0.05),
+          AppColors.waveCyan.withValues(alpha: 0.30),
           _meshGradient[(layer + 1) % _meshGradient.length]
-              .withValues(alpha: 0.30),
+              .withValues(alpha: 0.60),
         ],
         stops: const [0.0, 0.5, 1.0],
       ).createShader(Offset.zero & size);
@@ -320,15 +320,15 @@ class _WaveformPainter extends CustomPainter {
       if (glow) {
         final glowPaint = Paint()
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.4
+          ..strokeWidth = 3.0
           ..shader = shader
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
         canvas.drawPath(path, glowPaint);
       }
 
       final paint = Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.15
+        ..strokeWidth = 1.5
         ..shader = shader
         ..strokeCap = StrokeCap.round;
 
