@@ -37,7 +37,7 @@ jobs:
       # 1. Flutter SDK
       # ---------------------------------------------------------------
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Flutter ${{ env.FLUTTER_VERSION }}
         uses: subosito/flutter-action@v2
@@ -47,18 +47,21 @@ jobs:
           cache: true
 
       - name: Set up Java ${{ env.JAVA_VERSION }}
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Accept Android licenses
+      # O Flutter já traz o sdkmanager/avdmanager necessários e sabe
+      # instalar os componentes do Android SDK que faltarem. Por isso não
+      # usamos actions/setup-android (que exige rede extra e falha em
+      # runners sem toolcache completo).
+      - name: Set up Android SDK components
         run: |
+          flutter config --android-sdk "$ANDROID_HOME" || true
           yes | flutter doctor --android-licenses > /dev/null 2>&1 || true
-          sdkmanager --licenses < /dev/null > /dev/null 2>&1 || true
+          sdkmanager --install "platform-tools" "platforms;android-35" \
+            "build-tools;35.0.0" > /dev/null 2>&1 || true
 
       # ---------------------------------------------------------------
       # 2. Dependências
