@@ -492,6 +492,8 @@ class _RecordScreenState extends State<RecordScreen>
                   onRecordTap: _toggleRecording,
                   onBookmarkTap: _addBookmark,
                   bookmarks: _bookmarks,
+                  onPauseTap: _paused ? _resumeRecording : _pauseRecording,
+                  onRestartTap: _restartTimer,
                 ),
               ],
             ),
@@ -925,6 +927,8 @@ class _BottomControls extends StatelessWidget {
     required this.onRecordTap,
     required this.onBookmarkTap,
     required this.bookmarks,
+    required this.onPauseTap,
+    required this.onRestartTap,
   });
 
   final bool recording;
@@ -932,6 +936,12 @@ class _BottomControls extends StatelessWidget {
   final VoidCallback onRecordTap;
   final VoidCallback onBookmarkTap;
   final List<double> bookmarks;
+
+  /// Pausa ou retoma a gravação (mesma ação da notificação).
+  final VoidCallback onPauseTap;
+
+  /// Zera o temporizador da gravação.
+  final VoidCallback onRestartTap;
 
   @override
   Widget build(BuildContext context) {
@@ -954,9 +964,21 @@ class _BottomControls extends StatelessWidget {
             active: recording,
             onTap: () => _showFilters(context),
           ),
+          _AuxButton(
+            icon: paused ? AppIcons.play : AppIcons.pause,
+            label: paused ? 'Resume' : 'Pause',
+            active: recording && paused,
+            onTap: onPauseTap,
+          ),
           _RecordButton(
             recording: recording,
             onTap: onRecordTap,
+          ),
+          _AuxButton(
+            icon: AppIcons.rotate,
+            label: 'Reset',
+            active: recording,
+            onTap: onRestartTap,
           ),
           _AuxButton(
             icon: AppIcons.bookmark,
