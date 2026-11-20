@@ -26,8 +26,8 @@ android {
 
     defaultConfig {
         applicationId = "com.scrott.voice"
-        // `record` exige minSdk 23; 24 cobre AudioRecord e o codec AAC-LC.
-        minSdk = 24
+        // `record` exige minSdk 23; o Flutter 3.35 também usa 24.
+        minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
