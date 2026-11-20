@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:scrott_voice/core/theme/app_colors.dart';
 import 'package:scrott_voice/core/widgets/app_icon.dart';
 import 'package:scrott_voice/features/onboarding/welcome_screen.dart';
+import 'package:scrott_voice/services/app_scope.dart';
+import 'package:scrott_voice/services/app_settings.dart';
 
 void main() {
   testWidgets('a tela inicial exibe título, subtítulo e o botão Start Now',
@@ -15,16 +17,24 @@ void main() {
     await tester.pumpAndSettle(const Duration(seconds: 2));
 
     expect(find.text('Speech\nRecognition'), findsOneWidget);
-    expect(find.text('Save time with smart\nvoice transcription.'),
-        findsOneWidget);
+    expect(
+      find.text('Save time with smart\nvoice transcription.'),
+      findsOneWidget,
+    );
     expect(find.text('Start Now'), findsOneWidget);
   });
 
   testWidgets('o botão Start Now navega para a tela de gravação',
       (tester) async {
+    // A tela de gravação lê o estado compartilhado (nome do usuário,
+    // preferência de animação), então precisa do `AppScope` por volta.
+    final settings = AppSettings();
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(body: WelcomeScreen()),
+      AppScope(
+        settings: settings,
+        child: const MaterialApp(
+          home: Scaffold(body: WelcomeScreen()),
+        ),
       ),
     );
     await tester.pumpAndSettle(const Duration(seconds: 2));
