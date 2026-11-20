@@ -107,7 +107,9 @@ class AppTheme {
   }
 
   static TextTheme _textTheme(TextTheme base) {
-    return base
+    // `apply` não aceita `fontFamily`; a família é definida via
+    // `fontFamily` no ThemeData (ver `AppTheme.dark`).
+    final textTheme = base
         .copyWith(
           displayLarge: const TextStyle(
             fontFamily: fontFamily,
@@ -165,5 +167,7 @@ class AppTheme {
           ),
         )
         .apply(fontFamily: fontFamily);
+
+    return textTheme;
   }
 }

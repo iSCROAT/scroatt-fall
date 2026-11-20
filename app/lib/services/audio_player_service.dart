@@ -47,9 +47,11 @@ class AudioPlayerService {
     _posSub = _player.positionStream.listen((p) {
       if (!_positionController.isClosed) _positionController.add(p);
     });
-    _playingSub = _player.playerStateStream.listen((state) {
+    // `playingStream` já entrega um bool; `playerStateStream` emitiria
+    // `PlayerState`.
+    _playingSub = _player.playingStream.listen((playing) {
       if (!_playingController.isClosed) {
-        _playingController.add(state.playing);
+        _playingController.add(playing);
       }
     });
   }

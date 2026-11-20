@@ -212,7 +212,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                       SlideTransition(
                         position: _ctaSlide,
                         child: Opacity(
-                          opacity: _ctaSlide.value.clamp(0.0, 1.0),
+                          opacity: _ctaSlide.value,
                           child: Padding(
                             padding: const EdgeInsets.fromLTRB(26, 12, 26, 26),
                             child: _StartPill(onTap: _startNow),

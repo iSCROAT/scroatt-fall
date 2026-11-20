@@ -321,7 +321,7 @@ class _EditingScreenState extends State<EditingScreen> {
                           trimEnd: _trimEnd,
                           trimActive: _toolTrim,
                           onSeek: _seek,
-                          onTrimChanged: (start, end) {
+                          onTrimChanged: (double? start, double? end) {
                             setState(() {
                               _trimStart = start;
                               _trimEnd = end;
@@ -653,7 +653,7 @@ class _WaveformEditor extends StatelessWidget {
   final List<double> peaks;
   final double progress;
   final ValueChanged<double> onSeek;
-  final ValueChanged<double?> Function(double? start, double? end) onTrimChanged;
+  final void Function(double? start, double? end) onTrimChanged;
   final double? trimStart;
   final double? trimEnd;
   final bool trimActive;
