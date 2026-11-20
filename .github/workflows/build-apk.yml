@@ -16,6 +16,11 @@ on:
           - release
         default: debug
 
+# Permissões mínimas + escrita decontents, necessária para publicar o
+# log de build no branch de diagnóstico.
+permissions:
+  contents: write
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
