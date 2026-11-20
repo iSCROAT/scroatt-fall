@@ -14,7 +14,7 @@ import '../../services/app_scope.dart';
 import '../../services/app_settings.dart';
 import '../../services/audio_recorder_service.dart';
 import '../../services/notification_service.dart';
-import '../../services/recording_repository.dart';
+
 import '../editing/editing_screen.dart';
 
 /// Tela de gravação — a segunda do protótipo.
@@ -33,7 +33,8 @@ class RecordScreen extends StatefulWidget {
 class _RecordScreenState extends State<RecordScreen>
     with TickerProviderStateMixin {
   final AudioRecorderService _recorder = AudioRecorderService();
-  final RecordingRepository _repository = RecordingRepository();
+  /// Estado compartilhado — rascunho da transcrição e lista de gravações.
+  AppSettings? _settings;
   final NotificationService _notifications = NotificationService();
 
   late final AnimationController _orbController = AnimationController(
@@ -78,9 +79,11 @@ class _RecordScreenState extends State<RecordScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // O nome do usuário só pode ser lido depois que o contexto tem
-    // dependências resolvidas — `context` não é válido no `initState`.
-    final name = AppScope.of(context).displayNameOrDefault;
+    // O nome do usuário e o rascunho só podem ser lidos depois que o
+    // contexto tem dependências resolvidas — `context` não é válido no
+    // `initState`.
+    _settings ??= AppScope.of(context);
+    final name = _settings!.displayNameOrDefault;
     if (!_hasSpeech && _transcript == _greetingFor('there')) {
       _transcript = _greetingFor(name);
     }
@@ -110,9 +113,9 @@ class _RecordScreenState extends State<RecordScreen>
   }
 
   Future<void> _restoreTranscript() async {
-    final draft = await _repository.loadDraftTranscript();
+    final draft = _settings?.draftTranscript ?? '';
     if (!mounted) return;
-    if (draft != null && draft.trim().isNotEmpty) {
+    if (draft.trim().isNotEmpty) {
       setState(() {
         _transcript = draft;
         _hasSpeech = true;
@@ -335,7 +338,7 @@ class _RecordScreenState extends State<RecordScreen>
       amplitudePeaks: peaks,
     );
 
-    await _repository.save(recording);
+    await _settings?.saveRecording(recording);
 
     if (!mounted) return;
     await Navigator.of(context).push(
@@ -620,7 +623,7 @@ class _RecordScreenState extends State<RecordScreen>
         _transcript = result;
         _hasSpeech = result.isNotEmpty;
       });
-      await _repository.saveDraftTranscript(result);
+      await _settings?.setDraftTranscript(result);
     }
   }
 }
