@@ -60,8 +60,9 @@ jobs:
         run: |
           flutter config --android-sdk "$ANDROID_HOME" || true
           yes | flutter doctor --android-licenses > /dev/null 2>&1 || true
-          sdkmanager --install "platform-tools" "platforms;android-35" \
-            "build-tools;35.0.0" > /dev/null 2>&1 || true
+          sdkmanager --install "platform-tools" "platforms;android-36" \
+            "platforms;android-35" "build-tools;35.0.0" > /dev/null 2>&1 || true
+          sdkmanager --list_installed 2>/dev/null || true
 
       # ---------------------------------------------------------------
       # 2. Dependências
