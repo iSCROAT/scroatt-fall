@@ -178,9 +178,12 @@ jobs:
             }
           cd "$WORK/repo"
           mkdir -p ci-logs
-          cp "$WORK/build-${{ github.run_id }}.md" "ci-logs/"
-          git add "ci-logs/build-${{ github.run_id }}.md"
-          git commit -m "ci: log do build ${{ github.run_id }}" || true
+          cp "$WORK/build-${{ github.run_id }}.md" "ci-logs/build-${{ github.run_id }}.md"
+          ls -la ci-logs/
+          git add -A ci-logs
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -m "ci: log do build ${{ github.run_id }}" || true
           git push origin HEAD:refs/heads/ci-logs 2>&1 | tail -5
 
       # ---------------------------------------------------------------
