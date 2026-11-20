@@ -116,35 +116,35 @@ jobs:
 
       # Publica o log de build no repositório. O endpoint de logs e o
       # storage de artefatos do GitHub não estão acessíveis a partir de
-      # todos os ambientes, então gravamos o log em um branch de diagnóstico
-      # usando a API, que responde em api.github.com.
+      # todos os ambientes, então gravamos o log via API do Contents, que
+      # responde em api.github.com.
       - name: Publish build log to repo
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
           BUILD_TYPE: ${{ github.event.inputs.build_type || 'debug' }}
         run: |
           set -uo pipefail
-          LOG_FILE="build-log-${{ github.run_id }}.log"
           if [ -f app/build.log ]; then
-            cp app/build.log "$LOG_FILE"
+            SRC=app/build.log
           else
-            echo "build.log não encontrado" > "$LOG_FILE"
+            echo "build.log não encontrado" > /tmp/build.log
+            SRC=/tmp/build.log
           fi
           {
             echo "## Build $BUILD_TYPE — run ${{ github.run_id }}"
             echo
             echo '```'
-            cat "$LOG_FILE"
+            tail -n 200 "$SRC"
             echo '```'
-          } > "diagnostic-$LOG_FILE"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -B "ci-logs" || true
-          git add "$LOG_FILE" "diagnostic-$LOG_FILE" || true
-          git commit -m "ci: log do build ${{ github.run_id }}" || true
-          git push origin "ci-logs" || true
-          git checkout - || true
+          } > /tmp/diagnostic.md
+          gh api "repos/$GH_REPO/contents/ci-logs/build-${{ github.run_id }}.md" \
+            --method PUT \
+            -f message="ci: log do build ${{ github.run_id }}" \
+            -f content="$(base64 -w0 /tmp/diagnostic.md)" \
+            -f branch="main" > /dev/null 2>&1 \
+            || echo "falha ao publicar o log (sem impacto no build)"
 
       # ---------------------------------------------------------------
       # 5. Artefato baixável
