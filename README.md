@@ -34,6 +34,8 @@ gravação real de áudio, waveform ao vivo e edição de transcrição.
 | **Biblioteca** | Lista de gravações com busca por título/texto, duração total agregada e estado vazio |
 | **Permissões** | Detecção de recusa temporária vs. permanente, com atalho para as Configurações do sistema |
 | **Ajustes** | Idioma de transcrição, qualidade do áudio, filtros de gravação (redução de ruído, ganho automático, cancelamento de eco) |
+| **Nome do usuário** | Campo opcional nas configurações; o nome escolhido substitui o "Alex" fixo na saudação da transcrição |
+| **Animação da waveform** | Desligada por padrão (a malha redesenha milhares de segmentos por quadro e pesa em aparelhos modestos); ligável nas configurações |
 
 ---
 
@@ -60,6 +62,21 @@ de reprodução e a **barra de ferramentas** com as quatro ações do protótipo
 ### 4. Library — `lib/features/library/library_screen.dart`
 
 Lista de todas as gravações com capa, título, prévia da transcrição e duração.
+
+---
+
+## Estado compartilhado
+
+As telas conversam por um estado único, exposto via `AppScope`:
+
+| Camada | Papel |
+|---|---|
+| `lib/services/app_settings.dart` | `ChangeNotifier` com gravações, rascunho da transcrição, nome e preferência de animação |
+| `lib/services/app_scope.dart` | `InheritedNotifier` que distribui o estado e reconstrói as telas interessadas |
+| `lib/services/user_preferences.dart` | Persistência do nome e da preferência de animação (`shared_preferences`) |
+
+Com isso a biblioteca deixa de manter uma cópia paralela das gravações: quem
+salva, renomeia ou apaga uma gravação atualiza a lista na hora.
 
 ---
 
