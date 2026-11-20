@@ -88,12 +88,29 @@ jobs:
         run: flutter pub get
 
       # ---------------------------------------------------------------
-      # 3. Análise estática (não bloqueia o build)
+      # 3. Análise estática
       # ---------------------------------------------------------------
+      # O analyzer pega a maioria dos erros de compilação antes do Gradle,
+      # com mensagens muito mais claras. Falha o pipeline em erros.
       - name: Analyze
         working-directory: app
-        continue-on-error: true
-        run: flutter analyze --no-fatal-infos
+        run: |
+          set -uo pipefail
+          flutter analyze --no-fatal-infos 2>&1 | tee analyze.log
+          STATUS=${PIPESTATUS[0]}
+          if [ "$STATUS" -ne 0 ]; then
+            {
+              echo "### Análise estática"
+              echo '```'
+              cat analyze.log
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            while IFS= read -r line; do
+              [ -z "$line" ] && continue
+              echo "::error title=Analyzer::${line:0:900}"
+            done < <(grep -E "error •| error - " analyze.log | head -n 12)
+          fi
+          exit $STATUS
 
       # ---------------------------------------------------------------
       # 4. Build do APK
@@ -163,9 +180,9 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           rm -rf "$WORK/repo"
-          git clone --depth=1 --branch main \
+          git clone --depth=1 --branch "${{ github.ref_name }}" \
             "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" \
-            "$WORK/repo" || {
+            "$WORK/repo" 2>&1 | tail -3 || {
               echo "::error::falha ao clonar o repositório para publicar o log"
               exit 0
             }
@@ -177,7 +194,7 @@ jobs:
           git -c user.name="github-actions[bot]" \
               -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
               commit -m "ci: log do build ${{ github.run_id }}" || true
-          git push origin HEAD:refs/heads/ci-logs 2>&1 | tail -5
+          git push origin "HEAD:refs/heads/${{ github.ref_name }}" 2>&1 | tail -5
 
       # ---------------------------------------------------------------
       # 5. Artefato baixável
