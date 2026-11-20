@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:math' as math;
-import 'dart:ui' show FontFeature;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -211,7 +210,7 @@ class _RecordScreenState extends State<RecordScreen>
   Future<void> _startRecording() async {
     if (!await _ensurePermission()) return;
 
-    HapticFeedback.mediumImpact();
+    unawaited(HapticFeedback.mediumImpact());
     try {
       final dir = await getApplicationDocumentsDirectory();
       final path =
@@ -244,7 +243,7 @@ class _RecordScreenState extends State<RecordScreen>
   }
 
   Future<void> _stopRecording() async {
-    HapticFeedback.heavyImpact();
+    unawaited(HapticFeedback.heavyImpact());
     final path = await _recorder.stop();
     await _ampSub?.cancel();
     _ticker?.cancel();
@@ -297,18 +296,31 @@ class _RecordScreenState extends State<RecordScreen>
       _showError('Start a recording to mark a moment.');
       return;
     }
-    HapticFeedback.selectionClick();
+    unawaited(HapticFeedback.selectionClick());
     setState(() => _bookmarks.add(_elapsed));
   }
 
   Future<void> _openSettings() async {
-    HapticFeedback.selectionClick();
+    unawaited(HapticFeedback.selectionClick());
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppColors.backgroundElevated,
       isScrollControlled: true,
       builder: (_) => const _SettingsSheet(),
     );
+  }
+
+  /// Leva o usuário às configurações do sistema para liberar o microfone.
+  Future<void> _openSystemSettings() async {
+    unawaited(HapticFeedback.selectionClick());
+    await _recorder.openSystemSettings();
+    if (!mounted) return;
+    // Ao voltar das configurações, reavaliamos a permissão.
+    final status = await _recorder.requestPermission();
+    if (!mounted) return;
+    setState(() {
+      _permissionDenied = status != MicPermission.granted;
+    });
   }
 
   @override
@@ -331,7 +343,9 @@ class _RecordScreenState extends State<RecordScreen>
           child: SafeArea(
             child: Column(
               children: [
-                _TopBar(onSettings: _openSettings),
+                _TopBar(onSettings: _openSettings, recording: _recording),
+                if (_permissionDenied)
+                  _PermissionBanner(onOpenSettings: _openSystemSettings),
                 Expanded(
                   child: Stack(
                     children: [
@@ -503,9 +517,12 @@ class _RecordScreenState extends State<RecordScreen>
 // Barra superior
 // ==========================================================================
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.onSettings});
+  const _TopBar({required this.onSettings, this.recording = false});
 
   final VoidCallback onSettings;
+
+  /// Indica que há uma gravação em andamento (ainda não salva).
+  final bool recording;
 
   @override
   Widget build(BuildContext context) {
@@ -535,8 +552,63 @@ class _TopBar extends StatelessWidget {
             onTap: onSettings,
             size: 40,
             iconSize: 21,
+            badge: recording,
           ),
         ],
+      ),
+    );
+  }
+}
+
+// Aviso exibido quando o acesso ao microfone está bloqueado
+// ==========================================================================
+class _PermissionBanner extends StatelessWidget {
+  const _PermissionBanner({required this.onOpenSettings});
+
+  final Future<void> Function() onOpenSettings;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(22, 12, 22, 0),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+        decoration: BoxDecoration(
+          color: AppColors.record.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.record.withValues(alpha: 0.35)),
+        ),
+        child: Row(
+          children: [
+            const AppIcon(
+              AppIcons.micOff,
+              size: 20,
+              color: AppColors.record,
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Microphone access blocked',
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: onOpenSettings,
+              child: const Text(
+                'Settings',
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.accentBright,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

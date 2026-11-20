@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
 
 /// Nível de permissão de microfone.
@@ -52,6 +53,18 @@ class AudioRecorderService {
       return stillDenied ? MicPermission.denied : MicPermission.denied;
     } catch (_) {
       return MicPermission.unknown;
+    }
+  }
+
+  /// Abre as configurações do sistema para o usuário conceder a permissão
+  /// de microfone manualmente (usado quando a recusa é permanente).
+  ///
+  /// Retorna `true` quando as configurações foram abertas com sucesso.
+  Future<bool> openSystemSettings() async {
+    try {
+      return await openAppSettings();
+    } catch (_) {
+      return false;
     }
   }
 

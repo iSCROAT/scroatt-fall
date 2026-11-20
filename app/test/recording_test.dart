@@ -7,6 +7,7 @@ Recording build({
   String? title,
   DateTime? createdAt,
   double duration = 28,
+  List<double> amplitudePeaks = const [],
 }) {
   return Recording(
     id: id,
@@ -15,6 +16,7 @@ Recording build({
     duration: duration,
     transcript: transcript,
     title: title,
+    amplitudePeaks: amplitudePeaks,
   );
 }
 

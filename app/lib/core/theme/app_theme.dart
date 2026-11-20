@@ -166,7 +166,10 @@ class AppTheme {
             color: AppColors.textPrimary,
           ),
         )
-        .apply(fontFamily: fontFamily);
+        .apply(
+          bodyColor: AppColors.textPrimary,
+          displayColor: AppColors.textPrimary,
+        );
 
     return textTheme;
   }

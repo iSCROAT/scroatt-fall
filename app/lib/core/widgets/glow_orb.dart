@@ -138,8 +138,10 @@ class _OrbPainter extends CustomPainter {
         ..strokeWidth = 0.75
         ..shader = shader
         ..color = AppColors.waveGlow.withValues(alpha: 0.30 * intensity);
-      canvas.drawPath(_ribbonPath(center, radius * 0.94, spin + 0.18, r),
-          innerPaint);
+      canvas.drawPath(
+        _ribbonPath(center, radius * 0.94, spin + 0.18, r),
+        innerPaint,
+      );
     }
   }
 
