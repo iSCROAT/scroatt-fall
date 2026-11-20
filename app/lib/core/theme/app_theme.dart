@@ -25,13 +25,17 @@ class AppTheme {
       outline: AppColors.dividerStrong,
     );
 
-    final base = ThemeData.dark(useMaterial3: true);
+    // `ThemeData.copyWith` nao aceita `fontFamily`; a familia da fonte e
+    // informada no construtor do ThemeData.
+    final base = ThemeData.dark(
+      useMaterial3: true,
+      fontFamily: fontFamily,
+    );
 
     return base.copyWith(
       colorScheme: colorScheme,
       scaffoldBackgroundColor: AppColors.background,
       canvasColor: AppColors.background,
-      fontFamily: fontFamily,
       splashFactory: InkSparkle.splashFactory,
       visualDensity: VisualDensity.standard,
       textTheme: _textTheme(base.textTheme),
