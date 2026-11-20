@@ -164,8 +164,10 @@ jobs:
           WORK="$(mktemp -d)"
           if [ -f app/build.log ]; then
             SRC=app/build.log
+          elif [ -f app/analyze.log ]; then
+            SRC=app/analyze.log
           else
-            echo "build.log não encontrado" > "$WORK/build.log"
+            echo "nenhum log disponível" > "$WORK/build.log"
             SRC="$WORK/build.log"
           fi
           {
