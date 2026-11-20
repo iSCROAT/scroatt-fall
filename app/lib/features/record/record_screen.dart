@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' show FontFeature;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,11 +11,8 @@ import '../../core/utils/formatters.dart';
 import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/waveform_view.dart';
 import '../../models/recording.dart';
-import '../../services/app_scope.dart';
-import '../../services/app_settings.dart';
 import '../../services/audio_recorder_service.dart';
-import '../../services/notification_service.dart';
-
+import '../../services/recording_repository.dart';
 import '../editing/editing_screen.dart';
 
 /// Tela de gravação — a segunda do protótipo.
@@ -33,9 +31,7 @@ class RecordScreen extends StatefulWidget {
 class _RecordScreenState extends State<RecordScreen>
     with TickerProviderStateMixin {
   final AudioRecorderService _recorder = AudioRecorderService();
-  /// Estado compartilhado — rascunho da transcrição e lista de gravações.
-  AppSettings? _settings;
-  final NotificationService _notifications = NotificationService();
+  final RecordingRepository _repository = RecordingRepository();
 
   late final AnimationController _orbController = AnimationController(
     vsync: this,
@@ -53,25 +49,8 @@ class _RecordScreenState extends State<RecordScreen>
   bool _recording = false;
   bool _paused = false;
   bool _permissionDenied = false;
-  /// Indica se a animação pesada da waveform está ativa.
-  ///
-  /// Vem desligada por padrão e é ligada pelo usuário nas configurações.
-  bool get _animationsEnabled => AppScope.of(context).animationsEnabled;
-
-  /// Saudação usada enquanto não há fala transcrita.
-  ///
-  /// O nome vem das configurações; sem nome escolhido, usamos um texto
-  /// genérico para não prometer algo que o app não sabe.
-  static String _greetingFor(String name) =>
-      'Hello $name,\nHow are you today?';
-  /// Texto exibido na área de transcrição.
-  ///
-  /// Começa como uma saudação com o nome escolhido nas configurações e é
-  /// substituído pelo resultado real da transcrição.
-  String _transcript = _greetingFor('there');
-
-  /// Indica se a transcrição atual veio de fala real (e não da saudação).
-  bool _hasSpeech = false;
+  String _transcript = 'Hello Alex,\nHow are you today?';
+  bool _hasSpeech = true;
 
   /// Marcadores de "momentos" adicionados pelo usuário durante a gravação.
   final List<double> _bookmarks = <double>[];
@@ -79,52 +58,13 @@ class _RecordScreenState extends State<RecordScreen>
   @override
   void initState() {
     super.initState();
-    unawaited(_initNotifications());
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // O nome do usuário e o rascunho só podem ser lidos depois que o
-    // contexto tem dependências resolvidas — `context` não é válido no
-    // `initState`.
-    if (_settings != null) return;
-    _settings = AppScope.of(context);
-
-    final name = _settings!.displayNameOrDefault;
-    if (!_hasSpeech && _transcript == _greetingFor('there')) {
-      _transcript = _greetingFor(name);
-    }
     _restoreTranscript();
   }
 
-  /// Prepara a notificacao persistente e o registro das acoes rapidas.
-  Future<void> _initNotifications() async {
-    await _notifications.initialize(
-      actionCallback: _handleRecorderAction,
-    );
-    await _notifications.requestPermission();
-  }
-
-  /// Traduz as acoes da notificacao em operacoes do gravador.
-  Future<void> _handleRecorderAction(RecorderAction action) async {
-    if (!mounted) return;
-    switch (action) {
-      case RecorderAction.pause:
-        await _pauseRecording();
-      case RecorderAction.resume:
-        await _resumeRecording();
-      case RecorderAction.stop:
-        await _stopRecording();
-      case RecorderAction.restart:
-        _restartTimer();
-    }
-  }
-
   Future<void> _restoreTranscript() async {
-    final draft = _settings?.draftTranscript ?? '';
+    final draft = await _repository.loadDraftTranscript();
     if (!mounted) return;
-    if (draft.trim().isNotEmpty) {
+    if (draft != null && draft.trim().isNotEmpty) {
       setState(() {
         _transcript = draft;
         _hasSpeech = true;
@@ -136,7 +76,6 @@ class _RecordScreenState extends State<RecordScreen>
   void dispose() {
     _ampSub?.cancel();
     _ticker?.cancel();
-    _notifications.stopTicker();
     _recorder.dispose();
     _orbController.dispose();
     super.dispose();
@@ -272,7 +211,7 @@ class _RecordScreenState extends State<RecordScreen>
   Future<void> _startRecording() async {
     if (!await _ensurePermission()) return;
 
-    unawaited(HapticFeedback.mediumImpact());
+    HapticFeedback.mediumImpact();
     try {
       final dir = await getApplicationDocumentsDirectory();
       final path =
@@ -294,17 +233,6 @@ class _RecordScreenState extends State<RecordScreen>
         if (!mounted) return;
         setState(() => _elapsed += 0.1);
       });
-
-      // Notificacao persistente: o tempo exibido nela vem do mesmo
-      // `_elapsed` que a tela usa, entao os dois ficam sempre em sync.
-      await _notifications.showRecording(
-        elapsed: _elapsedDuration,
-        paused: false,
-      );
-      _notifications.startTicker(
-        elapsed: () => _elapsedDuration,
-        isPaused: () => _paused,
-      );
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -316,12 +244,10 @@ class _RecordScreenState extends State<RecordScreen>
   }
 
   Future<void> _stopRecording() async {
-    unawaited(HapticFeedback.heavyImpact());
+    HapticFeedback.heavyImpact();
     final path = await _recorder.stop();
     await _ampSub?.cancel();
     _ticker?.cancel();
-    _notifications.stopTicker();
-    await _notifications.cancelRecording();
 
     if (!mounted) return;
 
@@ -347,55 +273,12 @@ class _RecordScreenState extends State<RecordScreen>
       amplitudePeaks: peaks,
     );
 
-    await _settings?.saveRecording(recording);
+    await _repository.save(recording);
 
     if (!mounted) return;
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => EditingScreen(recording: recording),
-      ),
-    );
-  }
-
-  /// Tempo decorrido da gravacao, em [Duration].
-  ///
-  /// Derivado de [_elapsed] para que a tela e a notificacao compartilhem
-  /// exatamente a mesma fonte de tempo.
-  Duration get _elapsedDuration =>
-      Duration(milliseconds: (_elapsed * 1000).round());
-
-  /// Pausa a gravacao mantendo o audio ja capturado.
-  Future<void> _pauseRecording() async {
-    if (!_recording || _paused) return;
-    await _recorder.pause();
-    if (!mounted) return;
-    setState(() => _paused = true);
-    await _notifications.showRecording(
-      elapsed: _elapsedDuration,
-      paused: true,
-    );
-  }
-
-  /// Retoma uma gravacao pausada.
-  Future<void> _resumeRecording() async {
-    if (!_recording || !_paused) return;
-    await _recorder.resume();
-    if (!mounted) return;
-    setState(() => _paused = false);
-    await _notifications.showRecording(
-      elapsed: _elapsedDuration,
-      paused: false,
-    );
-  }
-
-  /// Zera o temporizador da gravacao, mantendo o audio capturado.
-  void _restartTimer() {
-    if (!_recording) return;
-    setState(() => _elapsed = 0);
-    unawaited(
-      _notifications.showRecording(
-        elapsed: _elapsedDuration,
-        paused: _paused,
       ),
     );
   }
@@ -414,31 +297,18 @@ class _RecordScreenState extends State<RecordScreen>
       _showError('Start a recording to mark a moment.');
       return;
     }
-    unawaited(HapticFeedback.selectionClick());
+    HapticFeedback.selectionClick();
     setState(() => _bookmarks.add(_elapsed));
   }
 
   Future<void> _openSettings() async {
-    unawaited(HapticFeedback.selectionClick());
+    HapticFeedback.selectionClick();
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppColors.backgroundElevated,
       isScrollControlled: true,
       builder: (_) => const _SettingsSheet(),
     );
-  }
-
-  /// Leva o usuário às configurações do sistema para liberar o microfone.
-  Future<void> _openSystemSettings() async {
-    unawaited(HapticFeedback.selectionClick());
-    await _recorder.openSystemSettings();
-    if (!mounted) return;
-    // Ao voltar das configurações, reavaliamos a permissão.
-    final status = await _recorder.requestPermission();
-    if (!mounted) return;
-    setState(() {
-      _permissionDenied = status != MicPermission.granted;
-    });
   }
 
   @override
@@ -461,9 +331,7 @@ class _RecordScreenState extends State<RecordScreen>
           child: SafeArea(
             child: Column(
               children: [
-                _TopBar(onSettings: _openSettings, recording: _recording),
-                if (_permissionDenied)
-                  _PermissionBanner(onOpenSettings: _openSystemSettings),
+                _TopBar(onSettings: _openSettings),
                 Expanded(
                   child: Stack(
                     children: [
@@ -476,11 +344,7 @@ class _RecordScreenState extends State<RecordScreen>
                           child: WaveformView(
                             peaks: meshPeaks,
                             style: WaveformStyle.mesh,
-                            // A animação da malha redesenha milhares de
-                            // segmentos a cada quadro e pesa em aparelhos
-                            // modestos: fica desligada por padrão e pode
-                            // ser ligada nas configurações.
-                            animate: _animationsEnabled,
+                            animate: true,
                             height: MediaQuery.of(context).size.height * 0.62,
                             color: AppColors.waveBright,
                           ),
@@ -533,8 +397,6 @@ class _RecordScreenState extends State<RecordScreen>
                   onRecordTap: _toggleRecording,
                   onBookmarkTap: _addBookmark,
                   bookmarks: _bookmarks,
-                  onPauseTap: _paused ? _resumeRecording : _pauseRecording,
-                  onRestartTap: _restartTimer,
                 ),
               ],
             ),
@@ -632,7 +494,7 @@ class _RecordScreenState extends State<RecordScreen>
         _transcript = result;
         _hasSpeech = result.isNotEmpty;
       });
-      await _settings?.setDraftTranscript(result);
+      await _repository.saveDraftTranscript(result);
     }
   }
 }
@@ -641,12 +503,9 @@ class _RecordScreenState extends State<RecordScreen>
 // Barra superior
 // ==========================================================================
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.onSettings, this.recording = false});
+  const _TopBar({required this.onSettings});
 
   final VoidCallback onSettings;
-
-  /// Indica que há uma gravação em andamento (ainda não salva).
-  final bool recording;
 
   @override
   Widget build(BuildContext context) {
@@ -676,63 +535,8 @@ class _TopBar extends StatelessWidget {
             onTap: onSettings,
             size: 40,
             iconSize: 21,
-            badge: recording,
           ),
         ],
-      ),
-    );
-  }
-}
-
-// Aviso exibido quando o acesso ao microfone está bloqueado
-// ==========================================================================
-class _PermissionBanner extends StatelessWidget {
-  const _PermissionBanner({required this.onOpenSettings});
-
-  final Future<void> Function() onOpenSettings;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(22, 12, 22, 0),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
-        decoration: BoxDecoration(
-          color: AppColors.record.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppColors.record.withValues(alpha: 0.35)),
-        ),
-        child: Row(
-          children: [
-            const AppIcon(
-              AppIcons.micOff,
-              size: 20,
-              color: AppColors.record,
-            ),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Text(
-                'Microphone access blocked',
-                style: TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ),
-            TextButton(
-              onPressed: onOpenSettings,
-              child: const Text(
-                'Settings',
-                style: TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.accentBright,
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -968,8 +772,6 @@ class _BottomControls extends StatelessWidget {
     required this.onRecordTap,
     required this.onBookmarkTap,
     required this.bookmarks,
-    required this.onPauseTap,
-    required this.onRestartTap,
   });
 
   final bool recording;
@@ -977,12 +779,6 @@ class _BottomControls extends StatelessWidget {
   final VoidCallback onRecordTap;
   final VoidCallback onBookmarkTap;
   final List<double> bookmarks;
-
-  /// Pausa ou retoma a gravação (mesma ação da notificação).
-  final VoidCallback onPauseTap;
-
-  /// Zera o temporizador da gravação.
-  final VoidCallback onRestartTap;
 
   @override
   Widget build(BuildContext context) {
@@ -995,54 +791,27 @@ class _BottomControls extends StatelessWidget {
           colors: [Color(0x0005070D), Color(0xE605070D)],
         ),
       ),
-      // `spaceEvenly` distribui os cinco controles sem estourar a largura:
-      // com `spaceBetween` a soma das larguras fixas ultrapassava a tela
-      // e o Flutter sinalizava o overflow com a faixa amarela.
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Os quatro controles auxiliares são `Expanded`: assim cada um
-          // divide o espaço restante com o botão de gravar e a linha nunca
-          // ultrapassa a largura da tela, aconteça o que acontecer com o
-          // número de controles ou com a largura do aparelho.
-          Expanded(
-            child: _AuxButton(
-              icon: AppIcons.trim,
-              label: 'Filters',
-              active: recording,
-              onTap: () => _showFilters(context),
-            ),
-          ),
-          Expanded(
-            child: _AuxButton(
-              icon: paused ? AppIcons.play : AppIcons.pause,
-              label: paused ? 'Resume' : 'Pause',
-              active: recording && paused,
-              onTap: onPauseTap,
-            ),
+          _AuxButton(
+            icon: AppIcons.trim,
+            label: 'Filters',
+            active: recording,
+            onTap: () => _showFilters(context),
           ),
           _RecordButton(
             recording: recording,
             onTap: onRecordTap,
           ),
-          Expanded(
-            child: _AuxButton(
-              icon: AppIcons.rotate,
-              label: 'Reset',
-              active: recording,
-              onTap: onRestartTap,
-            ),
-          ),
-          Expanded(
-            child: _AuxButton(
-              icon: AppIcons.bookmark,
-              label: bookmarks.isEmpty
-                  ? 'Mark'
-                  : '${bookmarks.length}',
-              active: bookmarks.isNotEmpty,
-              onTap: onBookmarkTap,
-            ),
+          _AuxButton(
+            icon: AppIcons.bookmark,
+            label: bookmarks.isEmpty
+                ? 'Mark'
+                : '${bookmarks.length}',
+            active: bookmarks.isNotEmpty,
+            onTap: onBookmarkTap,
           ),
         ],
       ),
@@ -1077,14 +846,14 @@ class _AuxButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: SizedBox(
+        width: 68,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 44,
-              height: 44,
+              width: 46,
+              height: 46,
               decoration: BoxDecoration(
                 color: active
                     ? AppColors.accent.withValues(alpha: 0.20)
@@ -1109,9 +878,6 @@ class _AuxButton extends StatelessWidget {
             const SizedBox(height: 7),
             Text(
               label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 11,
                 color: active
@@ -1438,49 +1204,12 @@ class _SettingsSheetState extends State<_SettingsSheet> {
   bool _saveToDevice = true;
   double _quality = 128;
 
-  /// Estado compartilhado — guarda o nome e a preferência de animação.
-  AppSettings? _settings;
-
-  /// Controller do campo de nome; o texto inicial vem das preferências.
-  final TextEditingController _nameController = TextEditingController();
-
-  /// Estado local do toggle de animação.
-  bool _animationsEnabled = false;
-
   static const _languages = {
     'en-US': 'English (US)',
     'en-GB': 'English (UK)',
     'pt-BR': 'Português (Brasil)',
     'es-ES': 'Español',
   };
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_settings != null) return;
-    _settings = AppScope.of(context);
-    _nameController.text = _settings!.displayName;
-    _animationsEnabled = _settings!.animationsEnabled;
-  }
-
-  /// Persiste o nome escolhido pelo usuário.
-  Future<void> _saveName(String name) async {
-    await _settings?.setDisplayName(name);
-    if (!mounted) return;
-    FocusScope.of(context).unfocus();
-  }
-
-  /// Liga ou desliga a animação pesada da waveform.
-  Future<void> _toggleAnimations(bool value) async {
-    setState(() => _animationsEnabled = value);
-    await _settings?.setAnimationsEnabled(value);
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1500,29 +1229,6 @@ class _SettingsSheetState extends State<_SettingsSheet> {
               ),
             ),
             const SizedBox(height: 20),
-            const Text(
-              'YOUR NAME',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.0,
-                color: AppColors.textTertiary,
-              ),
-            ),
-            const SizedBox(height: 10),
-            _NameField(
-              controller: _nameController,
-              onSubmitted: _saveName,
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              'Used to greet you in the transcription.',
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.textTertiary,
-              ),
-            ),
-            const SizedBox(height: 22),
             const Text(
               'TRANSCRIPTION LANGUAGE',
               style: TextStyle(
@@ -1588,14 +1294,6 @@ class _SettingsSheetState extends State<_SettingsSheet> {
               value: _saveToDevice,
               onChanged: (v) => setState(() => _saveToDevice = v),
             ),
-            const SizedBox(height: 10),
-            _FilterToggle(
-              icon: AppIcons.activity,
-              title: 'Live waveform animation',
-              subtitle: 'Animated mesh while recording — heavier on battery',
-              value: _animationsEnabled,
-              onChanged: _toggleAnimations,
-            ),
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
@@ -1615,64 +1313,6 @@ class _SettingsSheetState extends State<_SettingsSheet> {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Campo de texto para o nome do usuário.
-///
-/// Usa o mesmo vocabulário visual dos demais campos do app: fundo escuro
-/// elevado, borda sutil e foco em azul.
-class _NameField extends StatelessWidget {
-  const _NameField({required this.controller, required this.onSubmitted});
-
-  final TextEditingController controller;
-  final ValueChanged<String> onSubmitted;
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      textCapitalization: TextCapitalization.words,
-      textInputAction: TextInputAction.done,
-      maxLength: 40,
-      onSubmitted: onSubmitted,
-      onTapOutside: (_) {
-        FocusScope.of(context).unfocus();
-        onSubmitted(controller.text);
-      },
-      style: const TextStyle(
-        fontSize: 15,
-        color: AppColors.textPrimary,
-        fontWeight: FontWeight.w500,
-      ),
-      cursorColor: AppColors.accentBright,
-      decoration: InputDecoration(
-        hintText: 'How should we call you?',
-        hintStyle: const TextStyle(
-          fontSize: 15,
-          color: AppColors.textTertiary,
-        ),
-        counterText: '',
-        filled: true,
-        fillColor: AppColors.backgroundElevated,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 15,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.dividerStrong),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.dividerStrong),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.accentBright),
         ),
       ),
     );
