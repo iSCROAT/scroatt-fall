@@ -357,10 +357,12 @@ class _RecordScreenState extends State<RecordScreen>
   void _restartTimer() {
     if (!_recording) return;
     setState(() => _elapsed = 0);
-    unawaited(_notifications.showRecording(
-      elapsed: _elapsedDuration,
-      paused: _paused,
-    ));
+    unawaited(
+      _notifications.showRecording(
+        elapsed: _elapsedDuration,
+        paused: _paused,
+      ),
+    );
   }
 
   void _showError(String message) {
