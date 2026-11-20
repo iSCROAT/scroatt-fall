@@ -983,8 +983,11 @@ class _BottomControls extends StatelessWidget {
           colors: [Color(0x0005070D), Color(0xE605070D)],
         ),
       ),
+      // `spaceEvenly` distribui os cinco controles sem estourar a largura:
+      // com `spaceBetween` a soma das larguras fixas ultrapassava a tela
+      // e o Flutter sinalizava o overflow com a faixa amarela.
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           _AuxButton(
@@ -1051,13 +1054,13 @@ class _AuxButton extends StatelessWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: SizedBox(
-        width: 68,
+        width: 58,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 46,
-              height: 46,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
                 color: active
                     ? AppColors.accent.withValues(alpha: 0.20)
@@ -1082,6 +1085,9 @@ class _AuxButton extends StatelessWidget {
             const SizedBox(height: 7),
             Text(
               label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 11,
                 color: active
