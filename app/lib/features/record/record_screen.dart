@@ -52,8 +52,13 @@ class _RecordScreenState extends State<RecordScreen>
   bool _recording = false;
   bool _paused = false;
   bool _permissionDenied = false;
-  String _transcript = 'Hello Alex,\nHow are you today?';
-  bool _hasSpeech = true;
+  /// Texto exibido enquanto não há fala transcrita.
+  ///
+  /// Usa o nome escolhido pelo usuário nas configurações; sem nome, cai
+  /// para um texto genérico.
+  String get _placeholderTranscript =>
+      'Hello ${AppScope.of(context).displayNameOrDefault},\nHow are you today?';
+  bool _hasSpeech = false;
 
   /// Marcadores de "momentos" adicionados pelo usuário durante a gravação.
   final List<double> _bookmarks = <double>[];
@@ -61,6 +66,7 @@ class _RecordScreenState extends State<RecordScreen>
   @override
   void initState() {
     super.initState();
+    _transcript = _placeholderTranscript;
     _restoreTranscript();
     unawaited(_initNotifications());
   }
