@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Fundo exibido durante o cold start, antes do Flutter montar a UI.
+  Usa a mesma cor de fundo do app (#05070D) para evitar "flash" branco.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/launch_background" />
+</layer-list>
