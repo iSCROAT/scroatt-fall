@@ -161,8 +161,10 @@ class RecordingService : Service() {
 
     /** Intent que entrega a acao escolhida ao lado Dart. */
     private fun actionIntent(action: String, requestCode: Int): PendingIntent {
+        // `this.action` evita que o nome do parametro sombreie a propriedade
+        // `Intent.action` dentro do bloco `apply`.
         val intent = Intent(this, RecordingService::class.java).apply {
-            action = action
+            this.action = action
         }
         return PendingIntent.getService(
             this,
