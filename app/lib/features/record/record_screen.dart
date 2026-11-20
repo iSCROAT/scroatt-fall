@@ -52,12 +52,12 @@ class _RecordScreenState extends State<RecordScreen>
   bool _recording = false;
   bool _paused = false;
   bool _permissionDenied = false;
-  /// Texto exibido enquanto não há fala transcrita.
+  /// Saudação usada enquanto não há fala transcrita.
   ///
-  /// Usa o nome escolhido pelo usuário nas configurações; sem nome, cai
-  /// para um texto genérico.
-  String get _placeholderTranscript =>
-      'Hello ${AppScope.of(context).displayNameOrDefault},\nHow are you today?';
+  /// O nome vem das configurações; sem nome escolhido, usamos um texto
+  /// genérico para não prometer algo que o app não sabe.
+  static String _greetingFor(String name) =>
+      'Hello $name,\nHow are you today?';
   bool _hasSpeech = false;
 
   /// Marcadores de "momentos" adicionados pelo usuário durante a gravação.
@@ -66,9 +66,19 @@ class _RecordScreenState extends State<RecordScreen>
   @override
   void initState() {
     super.initState();
-    _transcript = _placeholderTranscript;
     _restoreTranscript();
     unawaited(_initNotifications());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // O nome do usuário só pode ser lido depois que o contexto tem
+    // dependências resolvidas — `context` não é válido no `initState`.
+    final name = AppScope.of(context).displayNameOrDefault;
+    if (!_hasSpeech && _transcript == _greetingFor('there')) {
+      _transcript = _greetingFor(name);
+    }
   }
 
   /// Prepara a notificacao persistente e o registro das acoes rapidas.
