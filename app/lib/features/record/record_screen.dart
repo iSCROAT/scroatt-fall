@@ -1381,12 +1381,36 @@ class _SettingsSheetState extends State<_SettingsSheet> {
   bool _saveToDevice = true;
   double _quality = 128;
 
+  late final AppSettings _settings = AppScope.of(context);
+  late final TextEditingController _nameController =
+      TextEditingController(text: _settings.displayName);
+  bool _animationsEnabled = false;
+
   static const _languages = {
     'en-US': 'English (US)',
     'en-GB': 'English (UK)',
     'pt-BR': 'Português (Brasil)',
     'es-ES': 'Español',
   };
+
+  /// Persiste o nome escolhido pelo usuário.
+  Future<void> _saveName(String name) async {
+    await _settings.setDisplayName(name);
+    if (!mounted) return;
+    FocusScope.of(context).unfocus();
+  }
+
+  /// Liga ou desliga a animação pesada da waveform.
+  Future<void> _toggleAnimations(bool value) async {
+    setState(() => _animationsEnabled = value);
+    await _settings.setAnimationsEnabled(value);
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1406,6 +1430,29 @@ class _SettingsSheetState extends State<_SettingsSheet> {
               ),
             ),
             const SizedBox(height: 20),
+            const Text(
+              'YOUR NAME',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.0,
+                color: AppColors.textTertiary,
+              ),
+            ),
+            const SizedBox(height: 10),
+            _NameField(
+              controller: _nameController,
+              onSubmitted: _saveName,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Used to greet you in the transcription.',
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.textTertiary,
+              ),
+            ),
+            const SizedBox(height: 22),
             const Text(
               'TRANSCRIPTION LANGUAGE',
               style: TextStyle(
@@ -1470,6 +1517,14 @@ class _SettingsSheetState extends State<_SettingsSheet> {
               subtitle: 'Store every take in local storage',
               value: _saveToDevice,
               onChanged: (v) => setState(() => _saveToDevice = v),
+            ),
+            const SizedBox(height: 10),
+            _FilterToggle(
+              icon: AppIcons.activity,
+              title: 'Live waveform animation',
+              subtitle: 'Animated mesh while recording — heavier on battery',
+              value: _animationsEnabled,
+              onChanged: _toggleAnimations,
             ),
             const SizedBox(height: 16),
             SizedBox(
