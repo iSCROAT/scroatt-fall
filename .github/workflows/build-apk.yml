@@ -112,11 +112,34 @@ jobs:
             tail -n 150 build.log 2>/dev/null || echo "(sem build.log)"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+          # Em caso de falha, publica as linhas de erro como anotações. As
+          # anotações são lidas pela API do GitHub, ao contrário do log
+          # completo, que nem sempre está acessível.
+          if [ "$STATUS" -ne 0 ]; then
+            {
+              echo "::group::Erro de build"
+              grep -n -iE "error|failed|exception|FAILURE|what went wrong" build.log \
+                | head -n 25 || true
+              echo "::endgroup::"
+              echo "::error title=Falha no build do APK::$(grep -iE 'FAILURE|What went wrong|error:' build.log | head -n 3 | tr '\n' ' ' | cut -c1-900)"
+            } >> "$GITHUB_OUTPUT_FILE" 2>/dev/null || true
+
+            # Anotações também podem ser emitidas por stdout.
+            grep -iE "FAILURE|What went wrong" build.log | head -n 2 \
+              | cut -c1-900 \
+              | while IFS= read -r line; do
+                echo "::error title=Gradle::$line"
+              done
+          fi
           exit $STATUS
 
       # Publica o log de build em um branch dedicado. O endpoint de logs e o
       # storage de artefatos do GitHub não estão acessíveis a partir de
       # todos os ambientes, então gravamos o log via git — que funciona.
+      #
+      # Se a publicação falhar, o erro é exibido como anotação para que
+      # possa ser diagnosticado pela API do GitHub.
       - name: Publish build log to branch
         if: always()
         env:
@@ -141,16 +164,19 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          # Cria (ou atualiza) o branch de diagnóstico a partir da main.
-          git fetch origin main --depth=1 || true
           rm -rf "$WORK/repo"
-          git clone --depth=1 --branch main https://x-access-token:"${{ github.token }}"@github.com/${{ github.repository }}.git "$WORK/repo"
+          git clone --depth=1 --branch main \
+            "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" \
+            "$WORK/repo" || {
+              echo "::error::falha ao clonar o repositório para publicar o log"
+              exit 0
+            }
           cd "$WORK/repo"
           mkdir -p ci-logs
           cp "$WORK/build-${{ github.run_id }}.md" "ci-logs/"
           git add "ci-logs/build-${{ github.run_id }}.md"
           git commit -m "ci: log do build ${{ github.run_id }}" || true
-          git push origin HEAD:refs/heads/ci-logs || true
+          git push origin HEAD:refs/heads/ci-logs 2>&1 | tail -5
 
       # ---------------------------------------------------------------
       # 5. Artefato baixável
