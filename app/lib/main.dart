@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'core/theme/app_theme.dart';
 import 'features/library/library_screen.dart';
 import 'features/onboarding/welcome_screen.dart';
+import 'services/app_scope.dart';
+import 'services/app_settings.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,22 +22,35 @@ Future<void> main() async {
       systemNavigationBarIconBrightness: Brightness.light,
     ),
   );
-  runApp(const ScroattApp());
+
+  // O estado compartilhado (gravações, rascunho, nome do usuário e
+  // preferência de animação) é carregado antes do primeiro frame, para que
+  // as telas já desenhem com os valores persistidos.
+  final settings = AppSettings();
+  await settings.load();
+
+  runApp(ScroattApp(settings: settings));
 }
 
 /// Scroatt — gravador de voz com transcrição.
 class ScroattApp extends StatelessWidget {
-  const ScroattApp({super.key});
+  const ScroattApp({super.key, required this.settings});
+
+  /// Estado compartilhado por todas as telas.
+  final AppSettings settings;
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Scroatt',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.dark,
-      themeMode: ThemeMode.dark,
-      darkTheme: AppTheme.dark,
-      home: const _RootRouter(),
+    return AppScope(
+      settings: settings,
+      child: MaterialApp(
+        title: 'Scroatt',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.dark,
+        themeMode: ThemeMode.dark,
+        darkTheme: AppTheme.dark,
+        home: const _RootRouter(),
+      ),
     );
   }
 }
