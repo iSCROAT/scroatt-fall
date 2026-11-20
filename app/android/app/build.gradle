@@ -6,6 +6,8 @@ plugins {
 
 android {
     namespace = "com.scrott.voice"
+    // `flutter.compileSdkVersion` aponta para o SDK estável atual do
+    // Flutter (36 no 3.35.x). Alguns plugins exigem compileSdk >= 35.
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -24,6 +26,7 @@ android {
 
     defaultConfig {
         applicationId = "com.scrott.voice"
+        // `record` exige minSdk 23; 24 cobre AudioRecord e o codec AAC-LC.
         minSdk = 24
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -35,6 +38,12 @@ android {
             // Assinatura de debug para permitir `flutter build apk --release`
             // no CI sem keystore de produção.
             signingConfig = signingConfigs.debug
+        }
+    }
+
+    packaging {
+        resources {
+            excludes += ['META-INF/*.kotlin_module']
         }
     }
 }
