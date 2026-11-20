@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_svg/flutter_svg.dart';
 
 /// Catálogo central de ícones do aplicativo.
@@ -53,9 +54,6 @@ class AppIcons {
   /// Enhancer de voz.
   static const String enhance = 'assets/icons/zap.svg';
 
-  /// Marcador de momento dentro da gravação.
-  static const String bookmark = 'assets/icons/bookmark.svg';
-
   /// Editar texto.
   static const String edit = 'assets/icons/edit-3.svg';
 
@@ -86,13 +84,21 @@ class AppIcons {
   static const String activity = 'assets/icons/activity.svg';
   static const String returnKey = 'assets/icons/corner-down-left.svg';
   static const String rotate = 'assets/icons/rotate-ccw.svg';
+
+  /// Marcador de momento dentro da gravação.
+  static const String bookmark = 'assets/icons/bookmark.svg';
 }
 
 /// Renderiza um ícone SVG do catálogo [AppIcons].
 ///
 /// `size` é a caixa quadrada do ícone. `color` aplica `currentColor`
 /// sobre o traço original do Feather.
-class AppIcon extends StatelessWidget {
+///
+/// `strokeWidth` é opcional: quando informado, o SVG é carregado como
+/// texto e o atributo `stroke-width` é substituído em tempo de
+/// execução — o `flutter_svg` 2.x não expõe uma forma nativa de
+/// sobrescrever a espessura do traço.
+class AppIcon extends StatefulWidget {
   const AppIcon(
     this.asset, {
     super.key,
@@ -109,25 +115,60 @@ class AppIcon extends StatelessWidget {
   final double? strokeWidth;
 
   @override
+  State<AppIcon> createState() => _AppIconState();
+}
+
+class _AppIconState extends State<AppIcon> {
+  String? _svgText;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.strokeWidth != null) _loadWithStrokeWidth();
+  }
+
+  @override
+  void didUpdateWidget(covariant AppIcon old) {
+    super.didUpdateWidget(old);
+    if (widget.strokeWidth != null && _svgText == null) {
+      _loadWithStrokeWidth();
+    }
+  }
+
+  Future<void> _loadWithStrokeWidth() async {
+    final raw = await rootBundle.loadString(widget.asset);
+    final replaced = raw.replaceAll(
+      RegExp(r'stroke-width="[^"]*"'),
+      'stroke-width="${widget.strokeWidth}"',
+    );
+    if (!mounted) return;
+    setState(() => _svgText = replaced);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final colorFilter = widget.color == null
+        ? null
+        : ColorFilter.mode(widget.color!, BlendMode.srcIn);
+
+    final picture = _svgText != null
+        ? SvgPicture.string(
+            _svgText!,
+            width: widget.size,
+            height: widget.size,
+            colorFilter: colorFilter,
+          )
+        : SvgPicture.asset(
+            widget.asset,
+            width: widget.size,
+            height: widget.size,
+            colorFilter: colorFilter,
+          );
+
     return SizedBox(
-      width: size,
-      height: size,
-      child: SvgPicture.asset(
-        asset,
-        width: size,
-        height: size,
-        colorFilter: color == null
-            ? null
-            : ColorFilter.mode(color!, BlendMode.srcIn),
-        theme: strokeWidth == null
-            ? null
-            : SvgTheme.from(
-                currentColor: color ?? const Color(0xFFFFFFFF),
-              ).copyWith(
-                strokeWidth: strokeWidth,
-              ),
-      ),
+      width: widget.size,
+      height: widget.size,
+      child: picture,
     );
   }
 }
