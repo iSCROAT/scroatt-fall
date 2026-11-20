@@ -25,10 +25,11 @@ class AppTheme {
       outline: AppColors.dividerStrong,
     );
 
-    // `ThemeData.copyWith` nao aceita `fontFamily`; a familia da fonte e
-    // informada no construtor do ThemeData.
-    final base = ThemeData.dark(
+    // `ThemeData.dark()` nao aceita `fontFamily`; o construtor completo
+    // `ThemeData(...)` aceita, e e ele que define a familia da fonte.
+    final base = ThemeData(
       useMaterial3: true,
+      brightness: Brightness.dark,
       fontFamily: fontFamily,
     );
 
