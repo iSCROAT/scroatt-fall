@@ -10,6 +10,8 @@ import '../../core/utils/formatters.dart';
 import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/waveform_view.dart';
 import '../../models/recording.dart';
+import '../../services/app_scope.dart';
+import '../../services/app_settings.dart';
 import '../../services/audio_recorder_service.dart';
 import '../../services/notification_service.dart';
 import '../../services/recording_repository.dart';
@@ -1545,6 +1547,64 @@ class _SettingsSheetState extends State<_SettingsSheet> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Campo de texto para o nome do usuário.
+///
+/// Usa o mesmo vocabulário visual dos demais campos do app: fundo escuro
+/// elevado, borda sutil e foco em azul.
+class _NameField extends StatelessWidget {
+  const _NameField({required this.controller, required this.onSubmitted});
+
+  final TextEditingController controller;
+  final ValueChanged<String> onSubmitted;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      textCapitalization: TextCapitalization.words,
+      textInputAction: TextInputAction.done,
+      maxLength: 40,
+      onSubmitted: onSubmitted,
+      onTapOutside: (_) {
+        FocusScope.of(context).unfocus();
+        onSubmitted(controller.text);
+      },
+      style: const TextStyle(
+        fontSize: 15,
+        color: AppColors.textPrimary,
+        fontWeight: FontWeight.w500,
+      ),
+      cursorColor: AppColors.accentBright,
+      decoration: InputDecoration(
+        hintText: 'How should we call you?',
+        hintStyle: TextStyle(
+          fontSize: 15,
+          color: AppColors.textTertiary,
+        ),
+        counterText: '',
+        filled: true,
+        fillColor: AppColors.backgroundElevated,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 15,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: AppColors.dividerStrong),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: AppColors.dividerStrong),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: AppColors.accentBright),
         ),
       ),
     );
