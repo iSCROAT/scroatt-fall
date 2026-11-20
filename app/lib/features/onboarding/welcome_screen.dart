@@ -223,8 +223,12 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                       // --------------------------------------------------
                       SlideTransition(
                         position: _ctaSlide,
-                        child: Opacity(
-                          opacity: _ctaOpacity,
+                        child: AnimatedBuilder(
+                          animation: _ctaOpacity,
+                          builder: (context, child) => Opacity(
+                            opacity: _ctaOpacity.value,
+                            child: child,
+                          ),
                           child: Padding(
                             padding: const EdgeInsets.fromLTRB(26, 12, 26, 26),
                             child: _StartPill(onTap: _startNow),
