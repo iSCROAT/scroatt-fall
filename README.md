@@ -98,7 +98,8 @@ Lista de todas as gravações com capa, título, prévia da transcrição e dura
 │   │   │   ├── editing/              # tela de edição
 │   │   │   └── library/              # biblioteca de gravações
 │   │   ├── models/                   # Recording
-│   │   ├── services/                 # recorder, player, repository
+│   │   ├── services/                 # recorder, player, repository,
+│   │   │                             # notification_service
 │   │   └── main.dart
 │   ├── test/                         # testes unitários e de widget
 │   └── pubspec.yaml
@@ -107,9 +108,13 @@ Lista de todas as gravações com capa, título, prévia da transcrição e dura
 ```
 
 A organização segue **feature-first**: cada tela vive em sua própria pasta e
-depende de `core/` (tema, widgets, utilitários) e `services/` (áudio e
-persistência). Nenhuma tela fala direto com o plugin nativo — tudo passa pelos
-serviços.
+depende de `core/` (tema, widgets, utilitários) e `services/` (áudio,
+persistência e notificações). Nenhuma tela fala direto com o plugin nativo —
+tudo passa pelos serviços.
+
+No lado Android, `RecordingService.kt` mantém a gravação como serviço em
+primeiro plano (com as ações de acesso rápido da notificação) e
+`MainActivity.kt` faz a ponte entre o motor Flutter e esse serviço.
 
 ---
 
