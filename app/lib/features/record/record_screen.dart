@@ -72,7 +72,6 @@ class _RecordScreenState extends State<RecordScreen>
   @override
   void initState() {
     super.initState();
-    _restoreTranscript();
     unawaited(_initNotifications());
   }
 
@@ -82,11 +81,14 @@ class _RecordScreenState extends State<RecordScreen>
     // O nome do usuário e o rascunho só podem ser lidos depois que o
     // contexto tem dependências resolvidas — `context` não é válido no
     // `initState`.
-    _settings ??= AppScope.of(context);
+    if (_settings != null) return;
+    _settings = AppScope.of(context);
+
     final name = _settings!.displayNameOrDefault;
     if (!_hasSpeech && _transcript == _greetingFor('there')) {
       _transcript = _greetingFor(name);
     }
+    _restoreTranscript();
   }
 
   /// Prepara a notificacao persistente e o registro das acoes rapidas.
