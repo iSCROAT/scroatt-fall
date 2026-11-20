@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -36,10 +38,12 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   late final Animation<double> _orbScale = Tween<double>(
     begin: 0.72,
     end: 1.0,
-  ).animate(CurvedAnimation(
-    parent: _intro,
-    curve: const Interval(0.15, 0.95, curve: Curves.easeOutBack),
-  ));
+  ).animate(
+    CurvedAnimation(
+      parent: _intro,
+      curve: const Interval(0.15, 0.95, curve: Curves.easeOutBack),
+    ),
+  );
 
   late final Animation<double> _textFade = CurvedAnimation(
     parent: _intro,
@@ -49,10 +53,18 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   late final Animation<Offset> _ctaSlide = Tween<Offset>(
     begin: const Offset(0, 0.35),
     end: Offset.zero,
-  ).animate(CurvedAnimation(
+  ).animate(
+    CurvedAnimation(
+      parent: _intro,
+      curve: const Interval(0.55, 1.0, curve: Curves.easeOutCubic),
+    ),
+  );
+
+  /// Opacidade do CTA, derivada da mesma animação de entrada do botão.
+  late final Animation<double> _ctaOpacity = CurvedAnimation(
     parent: _intro,
-    curve: const Interval(0.55, 1.0, curve: Curves.easeOutCubic),
-  ));
+    curve: const Interval(0.55, 1.0, curve: Curves.easeOut),
+  );
 
   @override
   void dispose() {
@@ -61,7 +73,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   }
 
   Future<void> _startNow() async {
-    HapticFeedback.mediumImpact();
+    unawaited(HapticFeedback.mediumImpact());
     await Navigator.of(context).push(
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 420),
@@ -211,8 +223,12 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                       // --------------------------------------------------
                       SlideTransition(
                         position: _ctaSlide,
-                        child: Opacity(
-                          opacity: _ctaSlide.value,
+                        child: AnimatedBuilder(
+                          animation: _ctaOpacity,
+                          builder: (context, child) => Opacity(
+                            opacity: _ctaOpacity.value,
+                            child: child,
+                          ),
                           child: Padding(
                             padding: const EdgeInsets.fromLTRB(26, 12, 26, 26),
                             child: _StartPill(onTap: _startNow),

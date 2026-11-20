@@ -11,12 +11,15 @@ Future<void> main() async {
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.light,
-    systemNavigationBarColor: Color(0xFF05070D),
-    systemNavigationBarIconBrightness: Brightness.light,
-  ));
+  // `setSystemUIOverlayStyle` retorna void (apenas aplica o estilo).
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+      systemNavigationBarColor: Color(0xFF05070D),
+      systemNavigationBarIconBrightness: Brightness.light,
+    ),
+  );
   runApp(const ScroattApp());
 }
 
@@ -47,7 +50,7 @@ class _RootRouter extends StatefulWidget {
 }
 
 class _RootRouterState extends State<_RootRouter> {
-  int _index = 0;
+  final int _index = 0;
 
   @override
   Widget build(BuildContext context) {

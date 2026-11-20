@@ -25,13 +25,18 @@ class AppTheme {
       outline: AppColors.dividerStrong,
     );
 
-    final base = ThemeData.dark(useMaterial3: true);
+    // `ThemeData.dark()` nao aceita `fontFamily`; o construtor completo
+    // `ThemeData(...)` aceita, e e ele que define a familia da fonte.
+    final base = ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      fontFamily: fontFamily,
+    );
 
     return base.copyWith(
       colorScheme: colorScheme,
       scaffoldBackgroundColor: AppColors.background,
       canvasColor: AppColors.background,
-      fontFamily: fontFamily,
       splashFactory: InkSparkle.splashFactory,
       visualDensity: VisualDensity.standard,
       textTheme: _textTheme(base.textTheme),
@@ -166,7 +171,10 @@ class AppTheme {
             color: AppColors.textPrimary,
           ),
         )
-        .apply(fontFamily: fontFamily);
+        .apply(
+          bodyColor: AppColors.textPrimary,
+          displayColor: AppColors.textPrimary,
+        );
 
     return textTheme;
   }

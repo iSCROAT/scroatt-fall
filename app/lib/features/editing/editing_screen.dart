@@ -89,7 +89,7 @@ class _EditingScreenState extends State<EditingScreen> {
   // Reprodução
   // -------------------------------------------------------------------
   Future<void> _togglePlay() async {
-    HapticFeedback.selectionClick();
+    unawaited(HapticFeedback.selectionClick());
     if (_playing) {
       await _player.pause();
     } else {
@@ -121,7 +121,7 @@ class _EditingScreenState extends State<EditingScreen> {
   }
 
   Future<void> _showMoreMenu() async {
-    HapticFeedback.selectionClick();
+    unawaited(HapticFeedback.selectionClick());
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppColors.backgroundElevated,
@@ -663,12 +663,14 @@ class _WaveformEditor extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        final height = 96.0;
+        const height = 96.0;
 
         void handle(Offset local) {
           final ratio = (local.dx / width).clamp(0.0, 1.0);
-          onSeek(ratio * (trimActive ? (trimEnd ?? 1.0) - (trimStart ?? 0.0) : 1.0) +
-              (trimActive ? (trimStart ?? 0.0) : 0.0));
+          onSeek(
+            ratio * (trimActive ? (trimEnd ?? 1.0) - (trimStart ?? 0.0) : 1.0) +
+                (trimActive ? (trimStart ?? 0.0) : 0.0),
+          );
         }
 
         return GestureDetector(
@@ -1094,12 +1096,12 @@ class _TrimPanel extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 4),
-          Row(
+          const Row(
             children: [
               Expanded(
                 child: Text(
                   'Start',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     color: AppColors.textTertiary,
                   ),
@@ -1109,7 +1111,7 @@ class _TrimPanel extends StatelessWidget {
                 child: Text(
                   'End',
                   textAlign: TextAlign.right,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     color: AppColors.textTertiary,
                   ),

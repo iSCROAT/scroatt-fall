@@ -264,7 +264,7 @@ class _WaveformPainter extends CustomPainter {
   // Estilo "mesh" — tela de gravação.
   // -----------------------------------------------------------------
   void _paintMesh(Canvas canvas, Size size) {
-    final layers = 7;
+    const layers = 7;
     final centerY = size.height / 2;
     final amplitude = size.height * 0.40;
 
@@ -279,7 +279,7 @@ class _WaveformPainter extends CustomPainter {
       final layerAmp = amplitude * (1 - layer * 0.075);
       final path = Path();
 
-      final segments = 150;
+      const segments = 150;
       for (var s = 0; s <= segments; s++) {
         final t = s / segments;
         final x = t * size.width;

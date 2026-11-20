@@ -23,6 +23,11 @@ dependencies:
   flutter_svg: ^2.0.14
   # Caminhos do sistema de arquivos do app.
   path_provider: ^2.1.4
+  # Notificacao persistente do gravador com acoes de acesso rapido
+  # (pausar, continuar, parar) e temporizador sincronizado.
+  # A serie 23+ exige Flutter >= 3.44; a 18.x e a ultima compativel com
+  # o Flutter 3.35.7 usado no CI.
+  flutter_local_notifications: ^18.0.1
 
 dev_dependencies:
   flutter_test:

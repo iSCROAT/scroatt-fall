@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:math' as math;
-import 'dart:ui' show FontFeature;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -12,6 +11,7 @@ import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/waveform_view.dart';
 import '../../models/recording.dart';
 import '../../services/audio_recorder_service.dart';
+import '../../services/notification_service.dart';
 import '../../services/recording_repository.dart';
 import '../editing/editing_screen.dart';
 
@@ -32,6 +32,7 @@ class _RecordScreenState extends State<RecordScreen>
     with TickerProviderStateMixin {
   final AudioRecorderService _recorder = AudioRecorderService();
   final RecordingRepository _repository = RecordingRepository();
+  final NotificationService _notifications = NotificationService();
 
   late final AnimationController _orbController = AnimationController(
     vsync: this,
@@ -59,6 +60,30 @@ class _RecordScreenState extends State<RecordScreen>
   void initState() {
     super.initState();
     _restoreTranscript();
+    unawaited(_initNotifications());
+  }
+
+  /// Prepara a notificacao persistente e o registro das acoes rapidas.
+  Future<void> _initNotifications() async {
+    await _notifications.initialize(
+      actionCallback: _handleRecorderAction,
+    );
+    await _notifications.requestPermission();
+  }
+
+  /// Traduz as acoes da notificacao em operacoes do gravador.
+  Future<void> _handleRecorderAction(RecorderAction action) async {
+    if (!mounted) return;
+    switch (action) {
+      case RecorderAction.pause:
+        await _pauseRecording();
+      case RecorderAction.resume:
+        await _resumeRecording();
+      case RecorderAction.stop:
+        await _stopRecording();
+      case RecorderAction.restart:
+        _restartTimer();
+    }
   }
 
   Future<void> _restoreTranscript() async {
@@ -76,6 +101,7 @@ class _RecordScreenState extends State<RecordScreen>
   void dispose() {
     _ampSub?.cancel();
     _ticker?.cancel();
+    _notifications.stopTicker();
     _recorder.dispose();
     _orbController.dispose();
     super.dispose();
@@ -211,7 +237,7 @@ class _RecordScreenState extends State<RecordScreen>
   Future<void> _startRecording() async {
     if (!await _ensurePermission()) return;
 
-    HapticFeedback.mediumImpact();
+    unawaited(HapticFeedback.mediumImpact());
     try {
       final dir = await getApplicationDocumentsDirectory();
       final path =
@@ -233,6 +259,17 @@ class _RecordScreenState extends State<RecordScreen>
         if (!mounted) return;
         setState(() => _elapsed += 0.1);
       });
+
+      // Notificacao persistente: o tempo exibido nela vem do mesmo
+      // `_elapsed` que a tela usa, entao os dois ficam sempre em sync.
+      await _notifications.showRecording(
+        elapsed: _elapsedDuration,
+        paused: false,
+      );
+      _notifications.startTicker(
+        elapsed: () => _elapsedDuration,
+        isPaused: () => _paused,
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -244,10 +281,12 @@ class _RecordScreenState extends State<RecordScreen>
   }
 
   Future<void> _stopRecording() async {
-    HapticFeedback.heavyImpact();
+    unawaited(HapticFeedback.heavyImpact());
     final path = await _recorder.stop();
     await _ampSub?.cancel();
     _ticker?.cancel();
+    _notifications.stopTicker();
+    await _notifications.cancelRecording();
 
     if (!mounted) return;
 
@@ -283,6 +322,49 @@ class _RecordScreenState extends State<RecordScreen>
     );
   }
 
+  /// Tempo decorrido da gravacao, em [Duration].
+  ///
+  /// Derivado de [_elapsed] para que a tela e a notificacao compartilhem
+  /// exatamente a mesma fonte de tempo.
+  Duration get _elapsedDuration =>
+      Duration(milliseconds: (_elapsed * 1000).round());
+
+  /// Pausa a gravacao mantendo o audio ja capturado.
+  Future<void> _pauseRecording() async {
+    if (!_recording || _paused) return;
+    await _recorder.pause();
+    if (!mounted) return;
+    setState(() => _paused = true);
+    await _notifications.showRecording(
+      elapsed: _elapsedDuration,
+      paused: true,
+    );
+  }
+
+  /// Retoma uma gravacao pausada.
+  Future<void> _resumeRecording() async {
+    if (!_recording || !_paused) return;
+    await _recorder.resume();
+    if (!mounted) return;
+    setState(() => _paused = false);
+    await _notifications.showRecording(
+      elapsed: _elapsedDuration,
+      paused: false,
+    );
+  }
+
+  /// Zera o temporizador da gravacao, mantendo o audio capturado.
+  void _restartTimer() {
+    if (!_recording) return;
+    setState(() => _elapsed = 0);
+    unawaited(
+      _notifications.showRecording(
+        elapsed: _elapsedDuration,
+        paused: _paused,
+      ),
+    );
+  }
+
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
@@ -297,18 +379,31 @@ class _RecordScreenState extends State<RecordScreen>
       _showError('Start a recording to mark a moment.');
       return;
     }
-    HapticFeedback.selectionClick();
+    unawaited(HapticFeedback.selectionClick());
     setState(() => _bookmarks.add(_elapsed));
   }
 
   Future<void> _openSettings() async {
-    HapticFeedback.selectionClick();
+    unawaited(HapticFeedback.selectionClick());
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppColors.backgroundElevated,
       isScrollControlled: true,
       builder: (_) => const _SettingsSheet(),
     );
+  }
+
+  /// Leva o usuário às configurações do sistema para liberar o microfone.
+  Future<void> _openSystemSettings() async {
+    unawaited(HapticFeedback.selectionClick());
+    await _recorder.openSystemSettings();
+    if (!mounted) return;
+    // Ao voltar das configurações, reavaliamos a permissão.
+    final status = await _recorder.requestPermission();
+    if (!mounted) return;
+    setState(() {
+      _permissionDenied = status != MicPermission.granted;
+    });
   }
 
   @override
@@ -331,7 +426,9 @@ class _RecordScreenState extends State<RecordScreen>
           child: SafeArea(
             child: Column(
               children: [
-                _TopBar(onSettings: _openSettings),
+                _TopBar(onSettings: _openSettings, recording: _recording),
+                if (_permissionDenied)
+                  _PermissionBanner(onOpenSettings: _openSystemSettings),
                 Expanded(
                   child: Stack(
                     children: [
@@ -397,6 +494,8 @@ class _RecordScreenState extends State<RecordScreen>
                   onRecordTap: _toggleRecording,
                   onBookmarkTap: _addBookmark,
                   bookmarks: _bookmarks,
+                  onPauseTap: _paused ? _resumeRecording : _pauseRecording,
+                  onRestartTap: _restartTimer,
                 ),
               ],
             ),
@@ -503,9 +602,12 @@ class _RecordScreenState extends State<RecordScreen>
 // Barra superior
 // ==========================================================================
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.onSettings});
+  const _TopBar({required this.onSettings, this.recording = false});
 
   final VoidCallback onSettings;
+
+  /// Indica que há uma gravação em andamento (ainda não salva).
+  final bool recording;
 
   @override
   Widget build(BuildContext context) {
@@ -535,8 +637,63 @@ class _TopBar extends StatelessWidget {
             onTap: onSettings,
             size: 40,
             iconSize: 21,
+            badge: recording,
           ),
         ],
+      ),
+    );
+  }
+}
+
+// Aviso exibido quando o acesso ao microfone está bloqueado
+// ==========================================================================
+class _PermissionBanner extends StatelessWidget {
+  const _PermissionBanner({required this.onOpenSettings});
+
+  final Future<void> Function() onOpenSettings;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(22, 12, 22, 0),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+        decoration: BoxDecoration(
+          color: AppColors.record.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.record.withValues(alpha: 0.35)),
+        ),
+        child: Row(
+          children: [
+            const AppIcon(
+              AppIcons.micOff,
+              size: 20,
+              color: AppColors.record,
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Microphone access blocked',
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: onOpenSettings,
+              child: const Text(
+                'Settings',
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.accentBright,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -772,6 +929,8 @@ class _BottomControls extends StatelessWidget {
     required this.onRecordTap,
     required this.onBookmarkTap,
     required this.bookmarks,
+    required this.onPauseTap,
+    required this.onRestartTap,
   });
 
   final bool recording;
@@ -779,6 +938,12 @@ class _BottomControls extends StatelessWidget {
   final VoidCallback onRecordTap;
   final VoidCallback onBookmarkTap;
   final List<double> bookmarks;
+
+  /// Pausa ou retoma a gravação (mesma ação da notificação).
+  final VoidCallback onPauseTap;
+
+  /// Zera o temporizador da gravação.
+  final VoidCallback onRestartTap;
 
   @override
   Widget build(BuildContext context) {
@@ -801,9 +966,21 @@ class _BottomControls extends StatelessWidget {
             active: recording,
             onTap: () => _showFilters(context),
           ),
+          _AuxButton(
+            icon: paused ? AppIcons.play : AppIcons.pause,
+            label: paused ? 'Resume' : 'Pause',
+            active: recording && paused,
+            onTap: onPauseTap,
+          ),
           _RecordButton(
             recording: recording,
             onTap: onRecordTap,
+          ),
+          _AuxButton(
+            icon: AppIcons.rotate,
+            label: 'Reset',
+            active: recording,
+            onTap: onRestartTap,
           ),
           _AuxButton(
             icon: AppIcons.bookmark,

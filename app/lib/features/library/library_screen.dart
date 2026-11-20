@@ -41,9 +41,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
     if (_query.trim().isEmpty) return _recordings;
     final q = _query.toLowerCase();
     return _recordings
-        .where((r) =>
-            r.displayTitle.toLowerCase().contains(q) ||
-            r.transcript.toLowerCase().contains(q))
+        .where(
+          (r) =>
+              r.displayTitle.toLowerCase().contains(q) ||
+              r.transcript.toLowerCase().contains(q),
+        )
         .toList();
   }
 
@@ -144,7 +146,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                                           EditingScreen(recording: items[i]),
                                     ),
                                   );
-                                  _load();
+                                  await _load();
                                 },
                               ),
                             ),
