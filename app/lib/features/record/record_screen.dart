@@ -990,35 +990,47 @@ class _BottomControls extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          _AuxButton(
-            icon: AppIcons.trim,
-            label: 'Filters',
-            active: recording,
-            onTap: () => _showFilters(context),
+          // Os quatro controles auxiliares são `Expanded`: assim cada um
+          // divide o espaço restante com o botão de gravar e a linha nunca
+          // ultrapassa a largura da tela, aconteça o que acontecer com o
+          // número de controles ou com a largura do aparelho.
+          Expanded(
+            child: _AuxButton(
+              icon: AppIcons.trim,
+              label: 'Filters',
+              active: recording,
+              onTap: () => _showFilters(context),
+            ),
           ),
-          _AuxButton(
-            icon: paused ? AppIcons.play : AppIcons.pause,
-            label: paused ? 'Resume' : 'Pause',
-            active: recording && paused,
-            onTap: onPauseTap,
+          Expanded(
+            child: _AuxButton(
+              icon: paused ? AppIcons.play : AppIcons.pause,
+              label: paused ? 'Resume' : 'Pause',
+              active: recording && paused,
+              onTap: onPauseTap,
+            ),
           ),
           _RecordButton(
             recording: recording,
             onTap: onRecordTap,
           ),
-          _AuxButton(
-            icon: AppIcons.rotate,
-            label: 'Reset',
-            active: recording,
-            onTap: onRestartTap,
+          Expanded(
+            child: _AuxButton(
+              icon: AppIcons.rotate,
+              label: 'Reset',
+              active: recording,
+              onTap: onRestartTap,
+            ),
           ),
-          _AuxButton(
-            icon: AppIcons.bookmark,
-            label: bookmarks.isEmpty
-                ? 'Mark'
-                : '${bookmarks.length}',
-            active: bookmarks.isNotEmpty,
-            onTap: onBookmarkTap,
+          Expanded(
+            child: _AuxButton(
+              icon: AppIcons.bookmark,
+              label: bookmarks.isEmpty
+                  ? 'Mark'
+                  : '${bookmarks.length}',
+              active: bookmarks.isNotEmpty,
+              onTap: onBookmarkTap,
+            ),
           ),
         ],
       ),
@@ -1053,8 +1065,8 @@ class _AuxButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: 58,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
