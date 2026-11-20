@@ -211,44 +211,50 @@ class NotificationService {
   }
 
   /// Monta as ações de acesso rápido conforme o estado da gravação.
-  static List<NotificationAction> actionsFor(bool paused) {
+  ///
+  /// O Android aceita no máximo três ações visíveis, então a gravação
+  /// pausada troca "Pause" por "Resume" mantendo sempre "Stop" à mão.
+  static List<AndroidNotificationAction> actionsFor(bool paused) {
     if (paused) {
       return const [
-        NotificationAction(
-          AndroidNotificationAction('resume',
-              label: 'Resume',
-              showsUserInterface: true,
-              cancelNotification: false,
-              icon: 'ic_mic'),
-        NotificationAction(
-          AndroidNotificationAction('restart',
-              label: 'Restart',
-              showsUserInterface: false,
-              cancelNotification: false,
-              icon: 'ic_refresh'),
-        NotificationAction(
-          AndroidNotificationAction('stop',
-              label: 'Stop',
-              showsUserInterface: false,
-              cancelNotification: false,
-              icon: 'ic_stop'),
+        AndroidNotificationAction(
+          'resume',
+          'Resume',
+          showsUserInterface: true,
+          cancelNotification: false,
+          icon: DrawableResourceAndroidBitmap('ic_mic'),
+        ),
+        AndroidNotificationAction(
+          'restart',
+          'Restart',
+          showsUserInterface: false,
+          cancelNotification: false,
+          icon: DrawableResourceAndroidBitmap('ic_refresh'),
+        ),
+        AndroidNotificationAction(
+          'stop',
+          'Stop',
+          showsUserInterface: false,
+          cancelNotification: false,
+          icon: DrawableResourceAndroidBitmap('ic_stop'),
         ),
       ];
     }
     return const [
-      NotificationAction(
-        AndroidNotificationAction('pause',
-            label: 'Pause',
-            showsUserInterface: true,
-            cancelNotification: false,
-            icon: 'ic_pause'),
-      NotificationAction(
-        AndroidNotificationAction('stop',
-            label: 'Stop',
-            showsUserInterface: false,
-            cancelNotification: false,
-            icon: 'ic_stop'),
-        ),
+      AndroidNotificationAction(
+        'pause',
+        'Pause',
+        showsUserInterface: true,
+        cancelNotification: false,
+        icon: DrawableResourceAndroidBitmap('ic_pause'),
+      ),
+      AndroidNotificationAction(
+        'stop',
+        'Stop',
+        showsUserInterface: false,
+        cancelNotification: false,
+        icon: DrawableResourceAndroidBitmap('ic_stop'),
+      ),
     ];
   }
 
