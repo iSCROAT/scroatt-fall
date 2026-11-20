@@ -259,6 +259,17 @@ class _RecordScreenState extends State<RecordScreen>
         if (!mounted) return;
         setState(() => _elapsed += 0.1);
       });
+
+      // Notificacao persistente: o tempo exibido nela vem do mesmo
+      // `_elapsed` que a tela usa, entao os dois ficam sempre em sync.
+      await _notifications.showRecording(
+        elapsed: _elapsedDuration,
+        paused: false,
+      );
+      _notifications.startTicker(
+        elapsed: () => _elapsedDuration,
+        isPaused: () => _paused,
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -274,6 +285,8 @@ class _RecordScreenState extends State<RecordScreen>
     final path = await _recorder.stop();
     await _ampSub?.cancel();
     _ticker?.cancel();
+    _notifications.stopTicker();
+    await _notifications.cancelRecording();
 
     if (!mounted) return;
 
@@ -307,6 +320,47 @@ class _RecordScreenState extends State<RecordScreen>
         builder: (_) => EditingScreen(recording: recording),
       ),
     );
+  }
+
+  /// Tempo decorrido da gravacao, em [Duration].
+  ///
+  /// Derivado de [_elapsed] para que a tela e a notificacao compartilhem
+  /// exatamente a mesma fonte de tempo.
+  Duration get _elapsedDuration =>
+      Duration(milliseconds: (_elapsed * 1000).round());
+
+  /// Pausa a gravacao mantendo o audio ja capturado.
+  Future<void> _pauseRecording() async {
+    if (!_recording || _paused) return;
+    await _recorder.pause();
+    if (!mounted) return;
+    setState(() => _paused = true);
+    await _notifications.showRecording(
+      elapsed: _elapsedDuration,
+      paused: true,
+    );
+  }
+
+  /// Retoma uma gravacao pausada.
+  Future<void> _resumeRecording() async {
+    if (!_recording || !_paused) return;
+    await _recorder.resume();
+    if (!mounted) return;
+    setState(() => _paused = false);
+    await _notifications.showRecording(
+      elapsed: _elapsedDuration,
+      paused: false,
+    );
+  }
+
+  /// Zera o temporizador da gravacao, mantendo o audio capturado.
+  void _restartTimer() {
+    if (!_recording) return;
+    setState(() => _elapsed = 0);
+    unawaited(_notifications.showRecording(
+      elapsed: _elapsedDuration,
+      paused: _paused,
+    ));
   }
 
   void _showError(String message) {
