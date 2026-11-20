@@ -10,7 +10,8 @@ import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/waveform_view.dart';
 import '../../models/recording.dart';
 import '../../services/audio_player_service.dart';
-import '../../services/recording_repository.dart';
+import '../../services/app_scope.dart';
+import '../../services/app_settings.dart';
 
 /// Tela de edição — a terceira do protótipo.
 ///
@@ -30,7 +31,9 @@ class EditingScreen extends StatefulWidget {
 
 class _EditingScreenState extends State<EditingScreen> {
   final AudioPlayerService _player = AudioPlayerService();
-  final RecordingRepository _repository = RecordingRepository();
+  /// Estado compartilhado — mantém a biblioteca em dia após salvar,
+  /// renomear ou apagar uma gravação.
+  AppSettings? _settings;
   final TextEditingController _textController = TextEditingController();
   final FocusNode _textFocus = FocusNode();
 
@@ -57,6 +60,14 @@ class _EditingScreenState extends State<EditingScreen> {
   /// Faixa selecionada para corte (início/fim em segundos).
   double? _trimStart;
   double? _trimEnd;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // O `AppScope` só pode ser lido depois que o contexto tem
+    // dependências resolvidas.
+    _settings ??= AppScope.of(context);
+  }
 
   @override
   void initState() {
@@ -89,7 +100,7 @@ class _EditingScreenState extends State<EditingScreen> {
   // Reprodução
   // -------------------------------------------------------------------
   Future<void> _togglePlay() async {
-    HapticFeedback.selectionClick();
+    unawaited(HapticFeedback.selectionClick());
     if (_playing) {
       await _player.pause();
     } else {
@@ -112,8 +123,8 @@ class _EditingScreenState extends State<EditingScreen> {
       transcript: _textController.text.trim(),
       duration: _duration,
     );
-    await _repository.save(_recording);
-    await _repository.saveDraftTranscript(_recording.transcript);
+    await _settings?.saveRecording(_recording);
+    await _settings?.setDraftTranscript(_recording.transcript);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Transcription saved')),
@@ -121,7 +132,7 @@ class _EditingScreenState extends State<EditingScreen> {
   }
 
   Future<void> _showMoreMenu() async {
-    HapticFeedback.selectionClick();
+    unawaited(HapticFeedback.selectionClick());
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppColors.backgroundElevated,
@@ -215,7 +226,7 @@ class _EditingScreenState extends State<EditingScreen> {
     );
 
     if (name != null && name.isNotEmpty) {
-      await _repository.rename(_recording.id, name);
+      await _settings?.renameRecording(_recording.id, name);
       setState(() => _recording = _recording.copyWith(title: name));
     }
   }
@@ -260,7 +271,7 @@ class _EditingScreenState extends State<EditingScreen> {
     );
 
     if (ok == true && mounted) {
-      await _repository.delete(_recording.id);
+      await _settings?.deleteRecording(_recording.id);
       if (mounted) Navigator.of(context).pop();
     }
   }
@@ -663,12 +674,14 @@ class _WaveformEditor extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        final height = 96.0;
+        const height = 96.0;
 
         void handle(Offset local) {
           final ratio = (local.dx / width).clamp(0.0, 1.0);
-          onSeek(ratio * (trimActive ? (trimEnd ?? 1.0) - (trimStart ?? 0.0) : 1.0) +
-              (trimActive ? (trimStart ?? 0.0) : 0.0));
+          onSeek(
+            ratio * (trimActive ? (trimEnd ?? 1.0) - (trimStart ?? 0.0) : 1.0) +
+                (trimActive ? (trimStart ?? 0.0) : 0.0),
+          );
         }
 
         return GestureDetector(
@@ -1094,12 +1107,12 @@ class _TrimPanel extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 4),
-          Row(
+          const Row(
             children: [
               Expanded(
                 child: Text(
                   'Start',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     color: AppColors.textTertiary,
                   ),
@@ -1109,7 +1122,7 @@ class _TrimPanel extends StatelessWidget {
                 child: Text(
                   'End',
                   textAlign: TextAlign.right,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     color: AppColors.textTertiary,
                   ),
