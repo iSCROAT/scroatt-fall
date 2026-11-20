@@ -11,7 +11,8 @@ Future<void> main() async {
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
-  await SystemChrome.setSystemUIOverlayStyle(
+  // `setSystemUIOverlayStyle` retorna void (apenas aplica o estilo).
+  SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.light,
