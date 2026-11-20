@@ -4,8 +4,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/widgets/app_icon.dart';
 import '../../models/recording.dart';
-import '../../services/app_scope.dart';
-import '../../services/app_settings.dart';
+import '../../services/recording_repository.dart';
 import '../editing/editing_screen.dart';
 
 /// Biblioteca de gravações — lista de todas as takes salvas.
@@ -17,25 +16,36 @@ class LibraryScreen extends StatefulWidget {
 }
 
 class _LibraryScreenState extends State<LibraryScreen> {
-  /// Estado compartilhado — a biblioteca acompanha as mudanças de nome,
-  /// animação e gravações sem manter uma cópia paralela.
-  AppSettings? _settings;
+  final RecordingRepository _repository = RecordingRepository();
 
+  List<Recording> _recordings = const [];
   bool _loading = true;
   String _query = '';
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_settings == null) {
-      _settings = AppScope.of(context);
-      _loading = false;
-    }
+  void initState() {
+    super.initState();
+    _load();
   }
 
-  List<Recording> get _recordings => _settings?.recordings ?? const [];
+  Future<void> _load() async {
+    final all = await _repository.loadAll();
+    if (!mounted) return;
+    setState(() {
+      _recordings = all;
+      _loading = false;
+    });
+  }
 
-  List<Recording> get _filtered => _settings?.search(_query) ?? const [];
+  List<Recording> get _filtered {
+    if (_query.trim().isEmpty) return _recordings;
+    final q = _query.toLowerCase();
+    return _recordings
+        .where((r) =>
+            r.displayTitle.toLowerCase().contains(q) ||
+            r.transcript.toLowerCase().contains(q))
+        .toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -134,7 +144,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                                           EditingScreen(recording: items[i]),
                                     ),
                                   );
-                                  await _settings?.reload();
+                                  _load();
                                 },
                               ),
                             ),
