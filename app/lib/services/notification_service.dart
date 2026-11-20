@@ -144,10 +144,10 @@ class NotificationService {
 
     try {
       await _plugin.show(
-        _recordingNotificationId,
-        label,
-        paused ? 'Paused' : 'Recording',
-        details,
+        id: _recordingNotificationId,
+        title: label,
+        body: paused ? 'Paused' : 'Recording',
+        notificationDetails: details,
       );
     } catch (_) {
       // A notificação é um complemento: falhar aqui não pode derrubar a
