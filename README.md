@@ -16,6 +16,7 @@ gravação real de áudio, waveform ao vivo e edição de transcrição.
 - [Estrutura do projeto](#estrutura-do-projeto)
 - [Como compilar](#como-compilar)
 - [CI/CD — APK no GitHub Actions](#cicd--apk-no-github-actions)
+- [Notificações com ações de acesso rápido](#notificações-com-ações-de-acesso-rápido)
 - [Design](#design)
 - [Validação local](#validação-local)
 - [Limitações conhecidas](#limitações-conhecidas)
@@ -174,6 +175,42 @@ gh workflow run build-apk -f build_type=release
 ```
 
 ---
+
+## Notificações com ações de acesso rápido
+
+Enquanto a gravação está em andamento, o app publica uma **notificação
+persistente** na barra de status. Ela é mantida por um serviço Android em
+primeiro plano (`RecordingService`), de modo que continua ativa mesmo com o
+app em segundo plano.
+
+**Temporizador sincronizado.** A notificação e a tela compartilham a mesma
+fonte de tempo: o `_elapsed` do `RecordScreen`. A notificação é atualizada a
+cada segundo pelo `NotificationService.startTicker()`, que recebe o tempo
+corrente por callback — nunca uma cópia congelada. O valor exibido na
+notificação e o exibido na tela são, portanto, sempre idênticos.
+
+**Ações disponíveis.** O Android aceita até três botões por notificação:
+
+| Estado | Botões na notificação |
+| --- | --- |
+| Gravando | **Pause** · **Stop** |
+| Pausado | **Resume** · **Restart** · **Stop** |
+
+- **Pause** — congela a captura mantendo o áudio já gravado.
+- **Resume** — retoma a captura de onde parou.
+- **Restart** — zera o temporizador da gravação, preservando o áudio.
+- **Stop** — finaliza a gravação e abre a tela de edição.
+
+As ações chegam ao Dart por dois caminhos: o `MethodChannel`
+`com.scrott.voice/recorder_actions` (quando o serviço nativo recebe o
+toque) e o callback `onDidReceiveNotificationResponse` do
+`flutter_local_notifications`. Ambos desembocam no mesmo handler
+`_handleRecorderAction`, que aplica a operação no `AudioRecorderService` e
+republica a notificação com o novo estado.
+
+**Permissões Android.** `POST_NOTIFICATIONS` (Android 13+),
+`FOREGROUND_SERVICE` e `FOREGROUND_SERVICE_MICROPHONE`. O serviço declara
+`foregroundServiceType="microphone"`.
 
 ## Design
 
