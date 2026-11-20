@@ -118,7 +118,9 @@ jobs:
       - name: Collect APKs
         run: |
           mkdir -p artifacts
-          find app/build/app/outputs/flutter-apk -name "*.apk" -exec cp {} artifacts/ \;
+          find app/build/app/outputs/flutter-apk -name "*.apk" -exec cp {} artifacts/ \; || true
+          # Anexa o log do build para diagnóstico quando algo falha.
+          [ -f app/build.log ] && cp app/build.log artifacts/build.log || true
           ls -lh artifacts/
 
       - name: Upload APK artifact
@@ -128,6 +130,17 @@ jobs:
           path: artifacts/*.apk
           if-no-files-found: error
           retention-days: 30
+
+      - name: Upload build log (diagnóstico)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log-${{ github.run_id }}
+          path: |
+            app/build.log
+            artifacts/build.log
+          if-no-files-found: ignore
+          retention-days: 7
 
       # ---------------------------------------------------------------
       # 6. Release (apenas na main, quando há tag)
