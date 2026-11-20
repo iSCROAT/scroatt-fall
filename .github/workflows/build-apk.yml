@@ -114,37 +114,43 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           exit $STATUS
 
-      # Publica o log de build no repositório. O endpoint de logs e o
+      # Publica o log de build em um branch dedicado. O endpoint de logs e o
       # storage de artefatos do GitHub não estão acessíveis a partir de
-      # todos os ambientes, então gravamos o log via API do Contents, que
-      # responde em api.github.com.
-      - name: Publish build log to repo
+      # todos os ambientes, então gravamos o log via git — que funciona.
+      - name: Publish build log to branch
         if: always()
         env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
           BUILD_TYPE: ${{ github.event.inputs.build_type || 'debug' }}
         run: |
           set -uo pipefail
+          WORK="$(mktemp -d)"
           if [ -f app/build.log ]; then
             SRC=app/build.log
           else
-            echo "build.log não encontrado" > /tmp/build.log
-            SRC=/tmp/build.log
+            echo "build.log não encontrado" > "$WORK/build.log"
+            SRC="$WORK/build.log"
           fi
           {
             echo "## Build $BUILD_TYPE — run ${{ github.run_id }}"
             echo
             echo '```'
-            tail -n 200 "$SRC"
+            tail -n 250 "$SRC"
             echo '```'
-          } > /tmp/diagnostic.md
-          gh api "repos/$GH_REPO/contents/ci-logs/build-${{ github.run_id }}.md" \
-            --method PUT \
-            -f message="ci: log do build ${{ github.run_id }}" \
-            -f content="$(base64 -w0 /tmp/diagnostic.md)" \
-            -f branch="main" > /dev/null 2>&1 \
-            || echo "falha ao publicar o log (sem impacto no build)"
+          } > "$WORK/build-${{ github.run_id }}.md"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Cria (ou atualiza) o branch de diagnóstico a partir da main.
+          git fetch origin main --depth=1 || true
+          rm -rf "$WORK/repo"
+          git clone --depth=1 --branch main https://x-access-token:"${{ github.token }}"@github.com/${{ github.repository }}.git "$WORK/repo"
+          cd "$WORK/repo"
+          mkdir -p ci-logs
+          cp "$WORK/build-${{ github.run_id }}.md" "ci-logs/"
+          git add "ci-logs/build-${{ github.run_id }}.md"
+          git commit -m "ci: log do build ${{ github.run_id }}" || true
+          git push origin HEAD:refs/heads/ci-logs || true
 
       # ---------------------------------------------------------------
       # 5. Artefato baixável
