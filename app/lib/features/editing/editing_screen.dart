@@ -62,6 +62,14 @@ class _EditingScreenState extends State<EditingScreen> {
   double? _trimEnd;
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // O `AppScope` só pode ser lido depois que o contexto tem
+    // dependências resolvidas.
+    _settings ??= AppScope.of(context);
+  }
+
+  @override
   void initState() {
     super.initState();
     _textController.text = widget.recording.transcript;
