@@ -1096,9 +1096,9 @@ class _TrimPanel extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 4),
-          Row(
+          const Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
                   'Start',
                   style: TextStyle(
@@ -1107,7 +1107,7 @@ class _TrimPanel extends StatelessWidget {
                   ),
                 ),
               ),
-              const Expanded(
+              Expanded(
                 child: Text(
                   'End',
                   textAlign: TextAlign.right,
