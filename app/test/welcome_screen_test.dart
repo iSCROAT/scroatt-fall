@@ -15,10 +15,8 @@ void main() {
     await tester.pumpAndSettle(const Duration(seconds: 2));
 
     expect(find.text('Speech\nRecognition'), findsOneWidget);
-    expect(
-      find.text('Save time with smart\nvoice transcription.'),
-      findsOneWidget,
-    );
+    expect(find.text('Save time with smart\nvoice transcription.'),
+        findsOneWidget);
     expect(find.text('Start Now'), findsOneWidget);
   });
 
