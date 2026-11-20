@@ -16,7 +16,9 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
         // `flutter_local_notifications` exige core library desugaring
         // para usar APIs de java.time em Android mais antigo.
-        isCoreLibraryDesugaringEnabled = true
+        // No AGP 8.x a propriedade e `coreLibraryDesugaringEnabled`
+        // (a variante `is...` pertence ao DSL do Kotlin).
+        coreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
