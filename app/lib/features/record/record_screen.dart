@@ -52,6 +52,11 @@ class _RecordScreenState extends State<RecordScreen>
   bool _recording = false;
   bool _paused = false;
   bool _permissionDenied = false;
+  /// Indica se a animação pesada da waveform está ativa.
+  ///
+  /// Vem desligada por padrão e é ligada pelo usuário nas configurações.
+  bool get _animationsEnabled => AppScope.of(context).animationsEnabled;
+
   /// Saudação usada enquanto não há fala transcrita.
   ///
   /// O nome vem das configurações; sem nome escolhido, usamos um texto
@@ -459,7 +464,11 @@ class _RecordScreenState extends State<RecordScreen>
                           child: WaveformView(
                             peaks: meshPeaks,
                             style: WaveformStyle.mesh,
-                            animate: true,
+                            // A animação da malha redesenha milhares de
+                            // segmentos a cada quadro e pesa em aparelhos
+                            // modestos: fica desligada por padrão e pode
+                            // ser ligada nas configurações.
+                            animate: _animationsEnabled,
                             height: MediaQuery.of(context).size.height * 0.62,
                             color: AppColors.waveBright,
                           ),
