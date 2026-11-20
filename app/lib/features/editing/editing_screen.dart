@@ -10,7 +10,8 @@ import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/waveform_view.dart';
 import '../../models/recording.dart';
 import '../../services/audio_player_service.dart';
-import '../../services/recording_repository.dart';
+import '../../services/app_scope.dart';
+import '../../services/app_settings.dart';
 
 /// Tela de edição — a terceira do protótipo.
 ///
@@ -30,7 +31,9 @@ class EditingScreen extends StatefulWidget {
 
 class _EditingScreenState extends State<EditingScreen> {
   final AudioPlayerService _player = AudioPlayerService();
-  final RecordingRepository _repository = RecordingRepository();
+  /// Estado compartilhado — mantém a biblioteca em dia após salvar,
+  /// renomear ou apagar uma gravação.
+  AppSettings? _settings;
   final TextEditingController _textController = TextEditingController();
   final FocusNode _textFocus = FocusNode();
 
@@ -112,8 +115,8 @@ class _EditingScreenState extends State<EditingScreen> {
       transcript: _textController.text.trim(),
       duration: _duration,
     );
-    await _repository.save(_recording);
-    await _repository.saveDraftTranscript(_recording.transcript);
+    await _settings?.saveRecording(_recording);
+    await _settings?.setDraftTranscript(_recording.transcript);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Transcription saved')),
@@ -215,7 +218,7 @@ class _EditingScreenState extends State<EditingScreen> {
     );
 
     if (name != null && name.isNotEmpty) {
-      await _repository.rename(_recording.id, name);
+      await _settings?.renameRecording(_recording.id, name);
       setState(() => _recording = _recording.copyWith(title: name));
     }
   }
@@ -260,7 +263,7 @@ class _EditingScreenState extends State<EditingScreen> {
     );
 
     if (ok == true && mounted) {
-      await _repository.delete(_recording.id);
+      await _settings?.deleteRecording(_recording.id);
       if (mounted) Navigator.of(context).pop();
     }
   }
