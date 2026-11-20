@@ -114,28 +114,21 @@ jobs:
           {
             echo "### Resultado do build (\`$BUILD_TYPE\`)"
             echo '```'
-            tail -n 150 build.log 2>/dev/null || echo "(sem build.log)"
+            tail -n 200 build.log 2>/dev/null || echo "(sem build.log)"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-          # Em caso de falha, publica as linhas de erro como anotações. As
-          # anotações são lidas pela API do GitHub, ao contrário do log
-          # completo, que nem sempre está acessível.
           if [ "$STATUS" -ne 0 ]; then
-            {
-              echo "::group::Erro de build"
-              grep -n -iE "error|failed|exception|FAILURE|what went wrong" build.log \
-                | head -n 25 || true
-              echo "::endgroup::"
-              echo "::error title=Falha no build do APK::$(grep -iE 'FAILURE|What went wrong|error:' build.log | head -n 3 | tr '\n' ' ' | cut -c1-900)"
-            } >> "$GITHUB_OUTPUT_FILE" 2>/dev/null || true
-
-            # Anotações também podem ser emitidas por stdout.
-            grep -iE "FAILURE|What went wrong" build.log | head -n 2 \
-              | cut -c1-900 \
-              | while IFS= read -r line; do
-                echo "::error title=Gradle::$line"
-              done
+            # Emite o trecho final do log como anotação. Anotações são lidas
+            # pela API do GitHub, ao contrário do log completo e dos
+            # artefatos, que ficam em hosts inacessíveis de alguns ambientes.
+            echo "::group::Trecho final do build"
+            tail -n 60 build.log 2>/dev/null || true
+            echo "::endgroup::"
+            while IFS= read -r line; do
+              [ -z "$line" ] && continue
+              echo "::error title=Build do APK::${line:0:900}"
+            done < <(grep -iE "FAILURE|What went wrong|error:|Caused by" build.log 2>/dev/null | head -n 8)
           fi
           exit $STATUS
 
