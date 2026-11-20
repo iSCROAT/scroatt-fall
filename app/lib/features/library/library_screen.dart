@@ -4,7 +4,8 @@ import '../../core/theme/app_colors.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/widgets/app_icon.dart';
 import '../../models/recording.dart';
-import '../../services/recording_repository.dart';
+import '../../services/app_scope.dart';
+import '../../services/app_settings.dart';
 import '../editing/editing_screen.dart';
 
 /// Biblioteca de gravações — lista de todas as takes salvas.
@@ -16,35 +17,29 @@ class LibraryScreen extends StatefulWidget {
 }
 
 class _LibraryScreenState extends State<LibraryScreen> {
-  final RecordingRepository _repository = RecordingRepository();
+  /// Estado compartilhado — a biblioteca acompanha as mudanças de nome,
+  /// animação e gravações sem manter uma cópia paralela.
+  AppSettings? _settings;
 
-  List<Recording> _recordings = const [];
   bool _loading = true;
   String _query = '';
 
   @override
-  void initState() {
-    super.initState();
-    _load();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // A lista vem pronta do estado compartilhado — não há carregamento
+    // próprio para esperar.
+    _settings ??= AppScope.of(context);
+    _loading = false;
   }
 
-  Future<void> _load() async {
-    final all = await _repository.loadAll();
-    if (!mounted) return;
-    setState(() {
-      _recordings = all;
-      _loading = false;
-    });
-  }
+  List<Recording> get _recordings => _settings?.recordings ?? const [];
 
-  List<Recording> get _filtered {
-    if (_query.trim().isEmpty) return _recordings;
-    final q = _query.toLowerCase();
-    return _recordings
-        .where((r) =>
-            r.displayTitle.toLowerCase().contains(q) ||
-            r.transcript.toLowerCase().contains(q))
-        .toList();
+  List<Recording> get _filtered => _settings?.search(_query) ?? const [];
+
+  /// Recarrega as gravações ao puxar a lista para baixo.
+  Future<void> _refresh() async {
+    await _settings?.reload();
   }
 
   @override
@@ -127,7 +122,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     : items.isEmpty
                         ? _EmptyState(hasQuery: _query.isNotEmpty)
                         : RefreshIndicator(
-                            onRefresh: _load,
+                            onRefresh: _refresh,
                             color: AppColors.accentBright,
                             backgroundColor: AppColors.surface,
                             child: ListView.separated(
@@ -144,7 +139,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                                           EditingScreen(recording: items[i]),
                                     ),
                                   );
-                                  _load();
+                                  await _settings?.reload();
                                 },
                               ),
                             ),
