@@ -28,7 +28,10 @@ class RecordingService : Service() {
         const val CHANNEL_ID = "scrott_recording"
         const val NOTIFICATION_ID = 1001
 
-        /** Canal usado pelo app Dart para publicar as acoes de acesso rapido. */
+        /** Canal Dart -> nativo, usado para iniciar/parar o servico. */
+        const val SERVICE_CHANNEL = "com.scrott.voice/recorder_service"
+
+        /** Canal nativo -> Dart, por onde chegam as acoes rapidas. */
         const val ACTION_CHANNEL = "com.scrott.voice/recorder_actions"
 
         const val ACTION_PAUSE = "pause"
@@ -38,6 +41,20 @@ class RecordingService : Service() {
 
         /** Identificador do motor Flutter registrado pelo app Dart. */
         const val ENGINE_ID = "scrott_engine"
+
+        /** Inicia (ou atualiza) o servico em primeiro plano. */
+        fun startRecording(context: Context, elapsed: String, paused: Boolean) {
+            val intent = Intent(context, RecordingService::class.java).apply {
+                putExtra("elapsed", elapsed)
+                putExtra("paused", paused)
+            }
+            context.startForegroundService(intent)
+        }
+
+        /** Encerra o servico e remove a notificacao. */
+        fun stopRecording(context: Context) {
+            context.stopService(Intent(context, RecordingService::class.java))
+        }
     }
 
     private var channel: MethodChannel? = null
