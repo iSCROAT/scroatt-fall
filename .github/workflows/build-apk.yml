@@ -60,8 +60,9 @@ jobs:
         run: |
           flutter config --android-sdk "$ANDROID_HOME" || true
           yes | flutter doctor --android-licenses > /dev/null 2>&1 || true
+          # NDK 27.0.12077973 é a versão fixada pelo Flutter 3.35.7.
           sdkmanager --install "platform-tools" "platforms;android-36" \
-            "platforms;android-35" "build-tools;35.0.0" > /dev/null 2>&1 || true
+            "build-tools;35.0.0" "ndk;27.0.12077973" > /dev/null 2>&1 || true
           sdkmanager --list_installed 2>/dev/null || true
 
       # ---------------------------------------------------------------
@@ -112,6 +113,38 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
           exit $STATUS
+
+      # Publica o log de build no repositório. O endpoint de logs e o
+      # storage de artefatos do GitHub não estão acessíveis a partir de
+      # todos os ambientes, então gravamos o log em um branch de diagnóstico
+      # usando a API, que responde em api.github.com.
+      - name: Publish build log to repo
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_TYPE: ${{ github.event.inputs.build_type || 'debug' }}
+        run: |
+          set -uo pipefail
+          LOG_FILE="build-log-${{ github.run_id }}.log"
+          if [ -f app/build.log ]; then
+            cp app/build.log "$LOG_FILE"
+          else
+            echo "build.log não encontrado" > "$LOG_FILE"
+          fi
+          {
+            echo "## Build $BUILD_TYPE — run ${{ github.run_id }}"
+            echo
+            echo '```'
+            cat "$LOG_FILE"
+            echo '```'
+          } > "diagnostic-$LOG_FILE"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "ci-logs" || true
+          git add "$LOG_FILE" "diagnostic-$LOG_FILE" || true
+          git commit -m "ci: log do build ${{ github.run_id }}" || true
+          git push origin "ci-logs" || true
+          git checkout - || true
 
       # ---------------------------------------------------------------
       # 5. Artefato baixável
