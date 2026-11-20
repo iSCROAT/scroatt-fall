@@ -60,7 +60,7 @@ class _RecordScreenState extends State<RecordScreen>
   void initState() {
     super.initState();
     _restoreTranscript();
-    _initNotifications();
+    unawaited(_initNotifications());
   }
 
   /// Prepara a notificacao persistente e o registro das acoes rapidas.
