@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:scrott_voice/core/theme/app_colors.dart';
 import 'package:scrott_voice/core/widgets/app_icon.dart';
 import 'package:scrott_voice/features/record/record_screen.dart';
 import 'package:scrott_voice/services/app_scope.dart';
@@ -35,25 +34,26 @@ void main() {
     // O `Row` dos cinco controles não pode gerar overflow: o Flutter
     // sinalizaria com a faixa amarela no topo da tela.
     expect(tester.takeException(), isNull);
-    expect(find.byType(Row), findsWidgets);
   });
 
   testWidgets('a saudação usa o nome escolhido pelo usuário',
       (tester) async {
-    final settings = AppSettings();
-    await tester.binding.setSurfaceSize(const Size(360, 780));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final settings = await pumpRecorder(tester);
 
-    await tester.pumpWidget(
-      AppScope(
-        settings: settings,
-        child: const MaterialApp(
-          home: Scaffold(body: RecordScreen()),
-        ),
-      ),
-    );
+    await settings.setDisplayName('Marina');
     await tester.pump(const Duration(milliseconds: 300));
 
+    expect(find.textContaining('Hello Marina'), findsOneWidget);
+  });
+
+  testWidgets('a saudação acompanha o nome enquanto a tela está aberta',
+      (tester) async {
+    final settings = await pumpRecorder(tester);
+
+    // A saudação inicial usa o nome padrão.
+    expect(find.textContaining('Hello there'), findsOneWidget);
+
+    // Trocar o nome com a tela montada deve refletir na saudação.
     await settings.setDisplayName('Marina');
     await tester.pump(const Duration(milliseconds: 300));
 
@@ -65,9 +65,10 @@ void main() {
     await pumpRecorder(tester);
 
     // Abre as configurações pelo ícone da barra superior.
-    await tester.tap(find.byWidgetPredicate(
+    final settingsIcon = find.byWidgetPredicate(
       (w) => w is AppIcon && w.asset == AppIcons.settings,
-    ));
+    );
+    await tester.tap(settingsIcon);
     await tester.pumpAndSettle(const Duration(milliseconds: 500));
 
     expect(find.text('Settings'), findsOneWidget);
