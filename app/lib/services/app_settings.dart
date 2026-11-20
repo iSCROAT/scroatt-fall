@@ -46,6 +46,15 @@ class AppSettings extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Recarrega as gravações do disco.
+  ///
+  /// Útil depois de uma edição que pode ter alterado o índice — por
+  /// exemplo, quando o usuário renomeia ou apaga uma gravação.
+  Future<void> reload() async {
+    _recordings = await _repository.loadAll();
+    notifyListeners();
+  }
+
   /// Salva uma gravação e recarrega a lista.
   Future<void> saveRecording(Recording recording) async {
     await _repository.save(recording);
