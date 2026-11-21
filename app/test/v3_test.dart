@@ -10,7 +10,7 @@ Recording buildRecording({
   DateTime? createdAt,
   double duration = 16,
   int fileSizeBytes = 1492992,
-  String title,
+  String title = '',
   String transcript = 'Hello Samuel, how are you today?',
 }) {
   return Recording(
