@@ -415,28 +415,11 @@ jobs:
             tail -n 200 test.log
             echo '```'
           } > testes.md
-          PAYLOAD=$(python3 - <<'PYEOF'
-          import base64, json, os
-
-          with open("testes.md", "rb") as fh:
-              content = base64.b64encode(fh.read()).decode()
-
-          print(json.dumps({
-              "message": "ci: log dos testes " + os.environ["GITHUB_RUN_ID"],
-              "content": content,
-              "branch": os.environ["GITHUB_REF_NAME"],
-          }))
-          PYEOF
-          )
-          curl -sS -X PUT \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            -H "Content-Type: application/json" \
-            -d "$PAYLOAD" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/contents/ci-logs/testes-${GITHUB_RUN_ID}.md" \
-            2>&1 | head -c 400 || true
-          echo
+          # O script de publicacao vive no proprio repo, entao a
+          # indentacao do YAML nao atrapalha o codigo Python.
+          python3 "$GITHUB_WORKSPACE/tools/publish_test_log.py" testes.md \
+            "ci-logs/testes-${GITHUB_RUN_ID}.md" \
+            "ci: log dos testes ${GITHUB_RUN_ID}" || true
 
           # Os testes nao derrubam o build: o APK ja foi gerado e
           # publicado, e o resultado dos testes aparece no resumo.
