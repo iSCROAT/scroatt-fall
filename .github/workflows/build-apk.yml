@@ -88,13 +88,8 @@ jobs:
         shell: bash
         run: |
           set -uo pipefail
-          echo "### flutter --version"
-          flutter --version 2>&1 | tee pubget.log
-          echo
-          echo "### flutter pub get"
-          flutter pub get 2>&1 | tee -a pubget.log
+          flutter pub get 2>&1 | tee pubget.log
           STATUS=${PIPESTATUS[0]}
-          echo "### exit=$STATUS"
           if [ "$STATUS" -ne 0 ]; then
             {
               echo "### pub get"
@@ -102,12 +97,30 @@ jobs:
               cat pubget.log
               echo '```'
             } >> "$GITHUB_STEP_SUMMARY"
-            cp pubget.log "pubget-failure-${{ github.run_id }}.md"
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add "pubget-failure-${{ github.run_id }}.md"
-            git commit -m "chore(ci): registra a falha do pub get (run ${{ github.run_id }})" || true
-            git push origin "HEAD:$GITHUB_REF_NAME" || true
+            # Publica o log pelo mesmo caminho usado pelo step de log do
+            # build, que ja e conhecido por funcionar no runner.
+            WORK="$(mktemp -d)"
+            {
+              echo "## pub get - run ${{ github.run_id }}"
+              echo
+              echo '```'
+              cat pubget.log
+              echo '```'
+            } > "$WORK/pubget-${{ github.run_id }}.md"
+            rm -rf "$WORK/repo"
+            git clone --depth=1 --branch "${{ github.ref_name }}" \
+              "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" \
+              "$WORK/repo" 2>&1 | tail -3 || true
+            if [ -d "$WORK/repo/.git" ]; then
+              cd "$WORK/repo"
+              mkdir -p ci-logs
+              cp "$WORK/pubget-${{ github.run_id }}.md" "ci-logs/pubget-${{ github.run_id }}.md"
+              git add -A ci-logs
+              git -c user.name="github-actions[bot]" \
+                  -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+                  commit -m "ci: log do pub get ${{ github.run_id }}" || true
+              git push origin "HEAD:refs/heads/${{ github.ref_name }}" 2>&1 | tail -5 || true
+            fi
             exit "$STATUS"
           fi
 
