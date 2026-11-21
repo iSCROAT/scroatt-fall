@@ -7,6 +7,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/glow_orb.dart';
 import '../../core/widgets/waveform_view.dart';
+import '../../services/app_scope.dart';
 import '../record/record_screen.dart';
 
 /// Tela de boas-vindas — a primeira do protótipo.
@@ -25,6 +26,14 @@ class WelcomeScreen extends StatefulWidget {
 
 class _WelcomeScreenState extends State<WelcomeScreen>
     with SingleTickerProviderStateMixin {
+  /// Indica se as animacoes pesadas estao ativas.
+  ///
+  /// Vem desligado por padrao: o orbe luminoso da tela inicial redesenha
+  /// dezenas de curvas a cada quadro e pesa em aparelhos modestos. Com a
+  /// preferencia desligada, desenhamos um unico quadro estatico.
+  bool get _animationsEnabled =>
+      AppScope.maybeOf(context)?.animationsEnabled ?? false;
+
   late final AnimationController _intro = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1500),
@@ -190,7 +199,15 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                     child: Stack(
                                       alignment: Alignment.center,
                                       children: [
-                                        const GlowOrb(size: 268),
+                                        // O orbe so fica animado quando o
+                                        // usuario liga as animacoes nas
+                                        // configuracoes — por padrao a tela
+                                        // inicial desenha um quadro estatico
+                                        // e o app nao gasta bateria.
+                                        GlowOrb(
+                                          size: 268,
+                                          animate: _animationsEnabled,
+                                        ),
                                         // Faixa de onda sobreposta, como no mockup.
                                         IgnorePointer(
                                           child: Opacity(
