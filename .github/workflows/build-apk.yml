@@ -389,8 +389,8 @@ jobs:
           # inteiro: o runner falha logo e o log aponta o caso.
           # O `timeout` do shell e a ultima rede de protecao: se o
           # runner de testes nao responder, ele e encerrado.
-          timeout --signal=KILL 600s flutter test --reporter expanded \
-            --timeout 60s 2>&1 | tee test.log
+          timeout --signal=KILL 240s flutter test --reporter expanded \
+            --timeout 30s 2>&1 | tee test.log
           STATUS=${PIPESTATUS[0]}
           if [ "$STATUS" -ne 0 ]; then
             {
