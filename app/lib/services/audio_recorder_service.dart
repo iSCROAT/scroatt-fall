@@ -74,22 +74,45 @@ class AudioRecorderService {
 
   /// Configuração de captura usada em todas as gravações.
   ///
-  /// * AAC-LC / 128 kbps / 44.1 kHz — qualidade de voz em tamanho compacto;
+  /// * AAC-LC / 44.1 kHz — qualidade de voz em tamanho compacto;
   /// * mono — voz é mono, e mono economiza metade do espaço;
-  /// * supressão de ruído e ganho automático ativados pelo padrão do
-  ///   Android, que entregam uma gravação mais limpa em campo aberto.
-  RecordConfig get defaultConfig => const RecordConfig(
+  /// * a taxa de bits e os filtros de ruído/ganho/echo vêm das
+  ///   configurações do usuário.
+  RecordConfig get defaultConfig => RecordConfig(
         encoder: AudioEncoder.aacLc,
-        bitRate: 128000,
+        bitRate: bitRate,
         sampleRate: 44100,
         numChannels: 1,
-        autoGain: true,
-        noiseSuppress: true,
+        autoGain: autoGain,
+        noiseSuppress: noiseSuppress,
+        echoCancel: echoCancel,
       );
+
+  /// Parâmetros de captura vindos das configurações do usuário.
+  ///
+  /// São aplicados no momento em que a gravação começa; por isso o
+  /// serviço os recebe em cada chamada em vez de guardá-los em cache.
+  int bitRate = 128000;
+  bool autoGain = true;
+  bool noiseSuppress = true;
+  bool echoCancel = true;
 
   /// Verifica se o codificador configurado é suportado no aparelho.
   Future<bool> isEncoderSupported() =>
       _recorder.isEncoderSupported(defaultConfig.encoder);
+
+  /// Aplica as preferências de captura escolhidas nas configurações.
+  void applyPreferences({
+    required int qualityKbps,
+    required bool autoGain,
+    required bool noiseSuppress,
+    required bool echoCancel,
+  }) {
+    bitRate = qualityKbps * 1000;
+    this.autoGain = autoGain;
+    this.noiseSuppress = noiseSuppress;
+    this.echoCancel = echoCancel;
+  }
 
   // -------------------------------------------------------------------
   // Ciclo de gravação
