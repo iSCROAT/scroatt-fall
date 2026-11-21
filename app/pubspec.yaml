@@ -23,6 +23,10 @@ dependencies:
   flutter_svg: ^2.0.14
   # Caminhos do sistema de arquivos do app.
   path_provider: ^2.1.4
+  # Decodificacao e edicao real de audio: converte o `.m4a` gravado em
+  # PCM via APIs nativas do Android (sem FFmpeg), o que permite cortar,
+  # ajustar volume e aplicar efeitos de voz no arquivo de verdade.
+  audio_decoder: ^0.8.1
   # Notificacao persistente do gravador com acoes de acesso rapido
   # (pausar, continuar, parar) e temporizador sincronizado.
   # A serie 23+ exige Flutter >= 3.44; a 18.x e a ultima compativel com
