@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-/// Representa uma gravação salva na biblioteca do usuário.
+/// Representa uma gravacao salva na biblioteca do usuario.
 class Recording {
   const Recording({
     required this.id,
@@ -11,23 +11,26 @@ class Recording {
     this.title,
     this.sampleRate = 44100,
     this.amplitudePeaks = const [],
-    this.languageCode = 'en-US',
+    this.languageCode = 'pt-BR',
+    this.ownerName = '',
+    this.fileSizeBytes = 0,
+    this.folder = '',
   });
 
   final String id;
 
-  /// Caminho absoluto do arquivo `.m4a` no armazenamento do app.
+  /// Caminho absoluto do arquivo `.m4a` no armazenamento.
   final String filePath;
 
   final DateTime createdAt;
 
-  /// Duração total em segundos.
+  /// Duracao total em segundos.
   final double duration;
 
-  /// Texto transcrito/editado pelo usuário.
+  /// Texto transcrito/editado pelo usuario.
   final String transcript;
 
-  /// Título opcional — quando ausente, geramos a partir da data.
+  /// Titulo opcional — quando ausente, geramos a partir da data.
   final String? title;
 
   final int sampleRate;
@@ -37,6 +40,21 @@ class Recording {
 
   final String languageCode;
 
+  /// Nome escolhido no app por quem fez a gravacao.
+  ///
+  /// Vem no nome do arquivo e no cabecalho da gravacao, para que o
+  /// usuario reconheca a origem do arquivo mesmo fora do app.
+  final String ownerName;
+
+  /// Tamanho do arquivo de audio em bytes.
+  ///
+  /// Guardamos o valor no momento em que o arquivo e escrito: medir o
+  /// arquivo a cada abertura da biblioteca custaria I/O desnecessario.
+  final int fileSizeBytes;
+
+  /// Pasta onde o arquivo foi gravado.
+  final String folder;
+
   String get displayTitle {
     if (title != null && title!.trim().isNotEmpty) return title!.trim();
     return _defaultTitle;
@@ -44,18 +62,57 @@ class Recording {
 
   String get _defaultTitle {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
+      'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez',
     ];
     final h = createdAt.hour.toString().padLeft(2, '0');
     final m = createdAt.minute.toString().padLeft(2, '0');
     return '${createdAt.day} ${months[createdAt.month - 1]} · $h:$m';
   }
 
-  /// Prévia de uma linha do texto, usada nos cards da biblioteca.
+  /// Data por extenso, no padrao brasileiro: `21/11/2026`.
+  String get formattedDate {
+    final d = createdAt;
+    return '${_two(d.day)}/${_two(d.month)}/${d.year}';
+  }
+
+  /// Hora no formato de 24 horas: `05:25`.
+  String get formattedTime {
+    final d = createdAt;
+    return '${_two(d.hour)}:${_two(d.minute)}';
+  }
+
+  /// Duracao formatada: `00:16` ou `1:02:33`.
+  String get formattedDuration {
+    final total = duration.round();
+    final h = total ~/ 3600;
+    final m = (total % 3600) ~/ 60;
+    final s = total % 60;
+    if (h > 0) {
+      return '$h:${_two(m)}:${_two(s)}';
+    }
+    return '${_two(m)}:${_two(s)}';
+  }
+
+  /// Tamanho do arquivo formatado: `1,4 MB`, `812 KB`, `45 B`.
+  String get formattedSize {
+    const units = ['B', 'KB', 'MB', 'GB'];
+    var value = fileSizeBytes.toDouble();
+    var unit = 0;
+    while (value >= 1024 && unit < units.length - 1) {
+      value /= 1024;
+      unit++;
+    }
+    final text = unit == 0
+        ? value.toStringAsFixed(0)
+        : value.toStringAsFixed(value >= 10 ? 1 : 1).replaceAll('.', ',');
+    return '$text ${units[unit]}';
+  }
+
+  /// Previa de uma linha do texto, usada nos cards da biblioteca.
   String get preview {
     final clean = transcript.trim().replaceAll(RegExp(r'\s+'), ' ');
-    if (clean.isEmpty) return 'Sem transcrição';
+    if (clean.isEmpty) return 'Sem transcricao';
     return clean.length <= 90 ? clean : '${clean.substring(0, 90)}…';
   }
 
@@ -69,6 +126,9 @@ class Recording {
     int? sampleRate,
     List<double>? amplitudePeaks,
     String? languageCode,
+    String? ownerName,
+    int? fileSizeBytes,
+    String? folder,
   }) {
     return Recording(
       id: id ?? this.id,
@@ -80,6 +140,9 @@ class Recording {
       sampleRate: sampleRate ?? this.sampleRate,
       amplitudePeaks: amplitudePeaks ?? this.amplitudePeaks,
       languageCode: languageCode ?? this.languageCode,
+      ownerName: ownerName ?? this.ownerName,
+      fileSizeBytes: fileSizeBytes ?? this.fileSizeBytes,
+      folder: folder ?? this.folder,
     );
   }
 
@@ -93,6 +156,9 @@ class Recording {
         'sampleRate': sampleRate,
         'amplitudePeaks': amplitudePeaks,
         'languageCode': languageCode,
+        'ownerName': ownerName,
+        'fileSizeBytes': fileSizeBytes,
+        'folder': folder,
       };
 
   factory Recording.fromJson(Map<String, dynamic> json) => Recording(
@@ -108,7 +174,10 @@ class Recording {
                 ?.map((e) => (e as num).toDouble())
                 .toList() ??
             const [],
-        languageCode: json['languageCode'] as String? ?? 'en-US',
+        languageCode: json['languageCode'] as String? ?? 'pt-BR',
+        ownerName: json['ownerName'] as String? ?? '',
+        fileSizeBytes: (json['fileSizeBytes'] as num?)?.toInt() ?? 0,
+        folder: json['folder'] as String? ?? '',
       );
 
   /// Serializa a lista inteira para o `SharedPreferences`.
@@ -126,4 +195,6 @@ class Recording {
       return const [];
     }
   }
+
+  static String _two(int value) => value.toString().padLeft(2, '0');
 }
