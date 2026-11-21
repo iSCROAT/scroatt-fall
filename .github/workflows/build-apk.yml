@@ -121,10 +121,13 @@ jobs:
           BUILD_TYPE: ${{ github.event.inputs.build_type || 'debug' }}
         run: |
           set -uo pipefail
+          # `--split-per-abi` gera um APK por arquitetura. Sem isso o
+          # arquivo unico embute as libs nativas de todas as ABIs e passa
+          # de 140 MB — grande demais para instalar com folga.
           if [ "$BUILD_TYPE" = "release" ]; then
             flutter build apk --release --split-per-abi 2>&1 | tee build.log
           else
-            flutter build apk --debug 2>&1 | tee build.log
+            flutter build apk --debug --split-per-abi 2>&1 | tee build.log
           fi
           STATUS=${PIPESTATUS[0]}
           # Preserva a saída do build no resumo da execução, mesmo em falha.
@@ -176,6 +179,10 @@ jobs:
             echo '```'
             tail -n 250 "$SRC"
             echo '```'
+            if [ -f app/apk-inventory.txt ]; then
+              echo
+              cat app/apk-inventory.txt
+            fi
           } > "$WORK/build-${{ github.run_id }}.md"
 
           git config user.name "github-actions[bot]"
@@ -204,16 +211,33 @@ jobs:
       - name: Collect APKs
         run: |
           mkdir -p artifacts
-          find app/build/app/outputs/flutter-apk -name "*.apk" -exec cp {} artifacts/ \; || true
+          # Renomeia cada APK para o nome da arquitetura, deixando claro
+          # qual instalar: `scroatt-arm64-v8a-debug.apk` e c.
+          for apk in app/build/app/outputs/flutter-apk/*.apk; do
+            [ -e "$apk" ] || continue
+            base=$(basename "$apk" .apk)     # ex.: app-arm64-v8a-debug
+            # `app-<abi>-<tipo>` -> `scroatt-<abi>-<tipo>`
+            name=$(echo "$base" | sed -E 's/^app-(.+)$/scroatt-\1/')
+            cp "$apk" "artifacts/${name}.apk"
+          done
+          # Checksum SHA-256 de cada APK: permite confirmar que o
+          # download não foi corrompido antes de instalar. Gerado DEPOIS
+          # da renomeacao, para os nomes no checksum corresponderem aos
+          # arquivos publicados.
+          (cd artifacts && sha256sum *.apk > SHA256SUMS.txt)
           # Anexa o log do build para diagnóstico quando algo falha.
           [ -f app/build.log ] && cp app/build.log artifacts/build.log || true
           ls -lh artifacts/
+          echo "--- checksums ---"
+          cat artifacts/SHA256SUMS.txt
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: scroatt-apk-${{ github.event.inputs.build_type || 'debug' }}
-          path: artifacts/*.apk
+          path: |
+            artifacts/*.apk
+            artifacts/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 30
 
@@ -227,6 +251,47 @@ jobs:
             artifacts/build.log
           if-no-files-found: ignore
           retention-days: 7
+
+      # ---------------------------------------------------------------
+      # 5b. Inventario dos APKs
+      #
+      # Publica o tamanho e o checksum de cada APK para que o download
+      # possa ser conferido antes da instalacao.
+      - name: APK inventory
+        if: always()
+        env:
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -uo pipefail
+          INVENTORY="app/apk-inventory.txt"
+          {
+            echo "# APKs gerados - run $RUN_ID"
+            echo
+            if ls artifacts/*.apk >/dev/null 2>&1; then
+              echo '| Arquivo | Tamanho |'
+              echo '|---|---|'
+              for apk in artifacts/*.apk; do
+                size=$(du -h "$apk" | cut -f1)
+                bytes=$(stat -c%s "$apk")
+                echo "| $(basename "$apk") | $size ($bytes bytes) |"
+              done
+              echo
+              echo '## SHA-256'
+              echo
+              echo '```'
+              cat artifacts/SHA256SUMS.txt 2>/dev/null || echo "(sem checksum)"
+              echo '```'
+            else
+              echo "(nenhum APK gerado)"
+            fi
+          } > "$INVENTORY"
+          cat "$INVENTORY"
+          {
+            echo "### APKs gerados"
+            echo '```'
+            cat "$INVENTORY"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       # ---------------------------------------------------------------
       # 6. Release (apenas na main, quando há tag)
