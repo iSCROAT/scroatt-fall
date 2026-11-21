@@ -87,6 +87,22 @@ class AppIcons {
 
   /// Marcador de momento dentro da gravação.
   static const String bookmark = 'assets/icons/bookmark.svg';
+
+  // ------------------------------------------------------------------
+  // Biblioteca e armazenamento
+  // ------------------------------------------------------------------
+
+  /// Sincronizar — recarrega a biblioteca com os arquivos ja salvos.
+  static const String refresh = 'assets/icons/refresh-cw.svg';
+
+  /// Pasta — destino dos arquivos de audio.
+  static const String folder = 'assets/icons/folder.svg';
+
+  /// Disco — armazenamento do aparelho.
+  static const String hardDrive = 'assets/icons/hard-drive.svg';
+
+  /// Salvar — confirmar gravacao.
+  static const String save = 'assets/icons/save.svg';
 }
 
 /// Renderiza um ícone SVG do catálogo [AppIcons].
