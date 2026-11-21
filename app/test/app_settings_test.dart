@@ -69,7 +69,10 @@ void main() {
       (w) => w is AppIcon && w.asset == AppIcons.settings,
     );
     await tester.tap(settingsIcon);
-    await tester.pumpAndSettle(const Duration(milliseconds: 500));
+    // A gravacao mantem animacoes continuas, entao `pumpAndSettle` nao
+    // terminaria: o tempo avanca de forma fixa.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.text('Settings'), findsOneWidget);
     expect(find.text('YOUR NAME'), findsOneWidget);
