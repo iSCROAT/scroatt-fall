@@ -176,15 +176,47 @@ para `main` ou branches `arena/**`, em todo PR e manualmente
 2. Configura o Android SDK e aceita as licenças.
 3. `flutter pub get` (com cache do `pub-cache`).
 4. `flutter analyze --no-fatal-infos` — não bloqueia o build.
-5. `flutter build apk --debug` (ou `--release --split-per-abi`).
+5. `flutter build apk --debug --split-per-abi` — um APK por arquitetura.
 6. Publica os `.apk` como **artefato baixável** do run
-   (`scroatt-apk-debug` / `scroatt-apk-release`).
-7. Se a ref for uma tag `v*`, cria um *draft release* com os APKs anexados.
+   (`scroatt-apk-debug` / `scroatt-apk-release`), junto com o
+   `SHA256SUMS.txt`.
+7. Publica o **inventário** dos APKs (tamanho e SHA-256 de cada um) no
+   log do build e no resumo da execução.
+8. Se a ref for uma tag `v*`, cria um *draft release* com os APKs anexados.
+
+### Escolhendo o APK certo
+
+O build é separado por arquitetura porque o APK único embute as libs
+nativas de todas as ABIs e passa de **140 MB**. Cada arquivo gerado tem o
+nome da sua ABI:
+
+| Arquivo | Aparelhos |
+|---|---|
+| `scroott-arm64-v8a-debug.apk` | Quase todo celular Android atual (64 bits) |
+| `scroott-armeabi-v7a-debug.apk` | Aparelhos antigos de 32 bits |
+| `scroott-x86_64-debug.apk` | Emuladores de 64 bits |
+
+Para saber a ABI do seu aparelho, em um terminal ADB:
+
+```bash
+adb shell getprop ro.product.cpu.abi
+```
+
+### Conferindo o download
+
+O artifact vem com um `SHA256SUMS.txt`. Se o download sair truncado ou
+corrompido, a verificação denuncia:
+
+```bash
+sha256sum -c SHA256SUMS.txt
+```
+
+O resultado esperado é `scroott-arm64-v8a-debug.apk: OK`.
 
 ### Baixando o artefato
 
 Na aba **Actions** do repositório, abra o run desejado e baixe o artefato
-`scrott-apk-debug` no rodapé da página. Via CLI:
+`scroatt-apk-debug` no rodapé da página. Via CLI:
 
 ```bash
 gh run download <run-id> -n scrott-apk-debug
