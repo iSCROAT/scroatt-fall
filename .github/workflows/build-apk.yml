@@ -85,7 +85,35 @@ jobs:
 
       - name: Get packages
         working-directory: app
-        run: flutter pub get
+        run: |
+          set -uo pipefail
+          flutter pub get 2>&1 | tee pubget.log
+          STATUS=${PIPESTATUS[0]}
+          if [ "$STATUS" -ne 0 ]; then
+            {
+              echo "### pub get"
+              echo '```'
+              cat pubget.log
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            {
+              echo "## pub get — falha na resolucao das dependencias"
+              echo '```'
+              cat pubget.log
+              echo '```'
+            } > "$RUNNER_TEMP/pubget-failure.md"
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git checkout "$GITHUB_HEAD_REF" 2>/dev/null || git checkout "$GITHUB_REF_NAME" 2>/dev/null || true
+            git fetch origin "$GITHUB_REF_NAME" 2>/dev/null || true
+            git checkout -B "$GITHUB_REF_NAME" "origin/$GITHUB_REF_NAME" 2>/dev/null || true
+            mkdir -p ci-logs
+            cp "$RUNNER_TEMP/pubget-failure.md" "ci-logs/pubget-failure-${{ github.run_id }}.md"
+            git add "ci-logs/pubget-failure-${{ github.run_id }}.md"
+            git commit -m "chore(ci): registra a falha do pub get (run ${{ github.run_id }})" || true
+            git push origin "HEAD:$GITHUB_REF_NAME" || true
+            exit "$STATUS"
+          fi
 
       # ---------------------------------------------------------------
       # 3. Análise estática
