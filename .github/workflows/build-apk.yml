@@ -230,12 +230,12 @@ jobs:
           WORK="$(mktemp -d)"
           if [ -f app/build.log ]; then
             SRC=app/build.log
+          elif [ -f app/test.log ]; then
+            SRC=app/test.log
           elif [ -f app/analyze.log ]; then
             SRC=app/analyze.log
           elif [ -f app/pubget.log ]; then
             SRC=app/pubget.log
-          elif [ -f app/test.log ]; then
-            SRC=app/test.log
           else
             echo "nenhum log disponível" > "$WORK/build.log"
             SRC="$WORK/build.log"
