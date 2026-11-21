@@ -365,9 +365,6 @@ class _RecordScreenState extends State<RecordScreen>
     // o disco a cada abertura.
     final settings = _settings;
     final fileSize = await settings?.storage.fileSize(path) ?? 0;
-    final fileStat = File(path).existsSync()
-        ? File(path).statSync()
-        : null;
 
     final recording = Recording(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -378,9 +375,7 @@ class _RecordScreenState extends State<RecordScreen>
       amplitudePeaks: peaks,
       ownerName: settings?.displayName ?? '',
       fileSizeBytes: fileSize,
-      folder: fileStat == null
-          ? ''
-          : File(fileStat.path).parent.path,
+      folder: File(path).parent.path,
     );
 
     await settings?.saveRecording(recording);
