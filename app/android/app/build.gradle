@@ -7,7 +7,7 @@ plugins {
 android {
     namespace = "com.scrott.voice"
     // `flutter.compileSdkVersion` aponta para o SDK estável atual do
-    // Flutter (36 no 3.35.x). Alguns plugins exigem compileSdk >= 35.
+    // Flutter (36 no 3.50.x). Alguns plugins exigem compileSdk >= 35.
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -21,9 +21,6 @@ android {
         coreLibraryDesugaringEnabled = true
     }
 
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17
-    }
 
     sourceSets {
         main.java.srcDirs += "src/main/kotlin"
@@ -31,11 +28,11 @@ android {
 
     defaultConfig {
         applicationId = "com.scrott.voice"
-        // `record` exige minSdk 23 (Android 6.0). O Flutter 3.35 usa 24
-        // por padrao, mas mantemos 23 para que o APK instale tambem em
-        // aparelhos Android 6 — o sistema recusa o pacote com "problema
-        // ao analisar o pacote" quando o minSdk e maior que a versao
-        // do aparelho.
+        // `record` e `audio_decoder` exigem minSdk 23 (Android 6.0).
+        // Mantemos 23 para que o APK instale tambem em aparelhos
+        // Android 6 — o sistema recusa o pacote com "problema ao
+        // analisar o pacote" quando o minSdk e maior que a versao do
+        // aparelho.
         minSdk = 23
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -55,6 +52,16 @@ android {
         resources {
             excludes += ['META-INF/*.kotlin_module']
         }
+    }
+}
+
+// AGP 9 / Kotlin 2.4: as opcoes do compilador ficam no bloco `kotlin`.
+// O alvo do bytecode precisa ser o mesmo do `compileOptions`, senao o
+// Kotlin gera classes com um nivel de bytecode que o Java 17 do
+// dispositivo nao consegue executar.
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
 }
 
