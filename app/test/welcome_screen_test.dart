@@ -23,6 +23,13 @@ Future<void> pumpWelcome(WidgetTester tester) async {
   // A orbita brilha em laco; `pumpAndSettle` nunca terminaria, entao o
   // tempo avanca de forma fixa.
   await tester.pump(const Duration(milliseconds: 600));
+
+  // A gravacao mantem animacoes continuas: desmontar a arvore no fim do
+  // teste evita que o runner fique esperando por elas.
+  addTearDown(() async {
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+  });
 }
 
 void main() {
