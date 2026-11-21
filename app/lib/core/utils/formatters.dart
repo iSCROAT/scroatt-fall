@@ -21,9 +21,8 @@ String formatPreciseDuration(double seconds) {
   final m = (total % 3600) ~/ 60;
   final s = total % 60;
   final cs = ((seconds - seconds.floor()) * 100).floor();
-  return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}.$cs'
-      .toString()
-      .padRight(5, '0');
+  final centesimos = cs.toString().padLeft(2, '0');
+  return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}.$centesimos';
 }
 
 /// Formata bytes em uma unidade legível.
