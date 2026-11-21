@@ -30,10 +30,12 @@ gravação real de áudio, waveform ao vivo e edição de transcrição.
 | **Gravação** | Captura real via `record` (AAC-LC, 128 kbps, 44.1 kHz, mono) com medição de amplitude em tempo real |
 | **Waveform** | Desenhada com `CustomPainter` — malha luminosa durante a gravação, barras com cursor no editor |
 | **Transcrição** | Campo editável, salvo automaticamente como rascunho e finalizado na tela de edição |
-| **Edição** | Trim com `RangeSlider`, ganho de volume, enhancer de voz, reprodução com seek |
-| **Biblioteca** | Lista de gravações com busca por título/texto, duração total agregada e estado vazio |
+| **Edição** | Trim com `RangeSlider`, ganho de volume, enhancer de voz e reprodução com seek — o arquivo é **processado de verdade** (PCM via `MediaCodec`) |
+| **Biblioteca** | Lista de gravações com busca por título/texto, duração, data, hora, tamanho do arquivo e dono |
+| **Sincronização** | Varre a pasta configurada e indexa os áudios que já estavam no aparelho |
 | **Permissões** | Detecção de recusa temporária vs. permanente, com atalho para as Configurações do sistema |
-| **Ajustes** | Idioma de transcrição, qualidade do áudio, filtros de gravação (redução de ruído, ganho automático, cancelamento de eco) |
+| **Ajustes** | Nome do usuário, idioma (padrão `pt-BR`), destino dos áudios, qualidade, filtros de captura e animação da waveform (desligada por padrão) |
+| **Persistência** | Preferências e índice das gravações gravados em disco — as escolhas sobrevivem ao fechamento do app |
 
 ---
 
