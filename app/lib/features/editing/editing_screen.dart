@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -12,6 +13,7 @@ import '../../models/recording.dart';
 import '../../services/audio_player_service.dart';
 import '../../services/app_scope.dart';
 import '../../services/app_settings.dart';
+import '../../services/audio_editor_service.dart';
 
 /// Tela de edição — a terceira do protótipo.
 ///
@@ -57,6 +59,24 @@ class _EditingScreenState extends State<EditingScreen> {
   double _volumeGain = 1.0;
   double _enhanceAmount = 0.5;
 
+  /// Serviço de edicao — corta, ajusta volume e aplica efeitos de voz.
+  final AudioEditorService _editor = AudioEditorService();
+
+  /// Caminho do arquivo atualmente em edicao.
+  ///
+  /// Ate a primeira edicao, e o arquivo original da gravacao; depois,
+  /// passa a ser o arquivo processado.
+  late String _currentPath = widget.recording.filePath;
+
+  /// Indica que um processamento de audio esta em andamento.
+  bool _processing = false;
+
+  /// Arquivos intermediarios gerados pelas edicoes.
+  ///
+  /// Sao apagados quando a gravacao e salva, para nao deixar lixo no
+  /// armazenamento do aparelho.
+  final List<String> _tempFiles = <String>[];
+
   /// Faixa selecionada para corte (início/fim em segundos).
   double? _trimStart;
   double? _trimEnd;
@@ -84,6 +104,127 @@ class _EditingScreenState extends State<EditingScreen> {
       if (!mounted) return;
       setState(() => _playing = playing);
     });
+  }
+
+  /// Caminho do proximo arquivo intermediario.
+  ///
+  /// O nome carrega o nome do dono, para que o arquivo temporario tambem
+  /// diga de quem e a gravacao.
+  String _nextTempPath(String suffix) {
+    final base = _recording.filePath;
+    final dot = base.lastIndexOf('.');
+    final stem = dot > 0 ? base.substring(0, dot) : base;
+    final extension = dot > 0 ? base.substring(dot + 1) : 'm4a';
+    final path = '${stem}_$suffix.$extension';
+    _tempFiles.add(path);
+    return path;
+  }
+
+  /// Corta o audio entre as marcas de trim.
+  ///
+  /// O arquivo processado substitui o atual, e a reproducao passa a usar
+  /// o trecho cortado.
+  Future<void> _applyTrim() async {
+    final start = _trimStart;
+    final end = _trimEnd;
+    if (start == null || end == null || end <= start) {
+      _notify('Escolha o trecho a cortar.');
+      return;
+    }
+    if (_processing) return;
+
+    setState(() => _processing = true);
+    try {
+      final output = await _editor.trim(
+        inputPath: _currentPath,
+        outputPath: _nextTempPath('trim'),
+        start: start,
+        end: end,
+      );
+      if (output == null) {
+        _notify('Nao foi possivel cortar este audio.');
+        return;
+      }
+      await _switchTo(output, duration: end - start);
+      _notify('Audio cortado para ${formatDuration(end - start)}.');
+    } finally {
+      if (mounted) setState(() => _processing = false);
+    }
+  }
+
+  /// Aplica o ganho de volume ao audio.
+  Future<void> _applyVolume() async {
+    if (_processing) return;
+    setState(() => _processing = true);
+    try {
+      final output = await _editor.applyVolume(
+        inputPath: _currentPath,
+        outputPath: _nextTempPath('volume'),
+        gain: _volumeGain,
+      );
+      if (output == null) {
+        _notify('Nao foi possivel ajustar o volume.');
+        return;
+      }
+      await _switchTo(output);
+      _notify('Volume ajustado para ${_volumeGain.toStringAsFixed(1)}x.');
+    } finally {
+      if (mounted) setState(() => _processing = false);
+    }
+  }
+
+  /// Aplica o efeito de voz ao audio.
+  Future<void> _applyEnhance() async {
+    if (_processing) return;
+    setState(() => _processing = true);
+    try {
+      final output = await _editor.applyVoiceEffect(
+        inputPath: _currentPath,
+        outputPath: _nextTempPath('enhance'),
+        enhance: 1.0 + _enhanceAmount,
+        echo: _enhanceAmount * 0.35,
+        normalize: true,
+      );
+      if (output == null) {
+        _notify('Nao foi possivel aplicar o efeito.');
+        return;
+      }
+      await _switchTo(output);
+      _notify('Efeito de voz aplicado.');
+    } finally {
+      if (mounted) setState(() => _processing = false);
+    }
+  }
+
+  /// Troca o arquivo em edicao pelo resultado de um processamento.
+  Future<void> _switchTo(String path, {double? duration}) async {
+    await _player.stop();
+    if (!mounted) return;
+    setState(() {
+      _currentPath = path;
+      if (duration != null) {
+        _duration = duration;
+      }
+      _position = 0;
+      _dirty = true;
+    });
+    await _player.setFile(path);
+    if (!mounted) return;
+    setState(() => _position = 0);
+  }
+
+  /// Mostra uma mensagem breve no rodape.
+  void _notify(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
   }
 
   @override
@@ -119,16 +260,64 @@ class _EditingScreenState extends State<EditingScreen> {
   // Edição
   // -------------------------------------------------------------------
   Future<void> _save() async {
+    final settings = _settings;
+    if (settings == null) return;
+
+    // O arquivo editado vira o arquivo final: ele e copiado para o
+    // destino escolhido, com o nome do usuario, a data e a hora.
+    var finalPath = _currentPath;
+    var finalSize = await settings.storage.fileSize(finalPath);
+    var finalFolder = '';
+
+    try {
+      final source = File(_currentPath);
+      if (await source.exists()) {
+        finalPath = await settings.storage.buildFilePath(
+          location: settings.storageLocation,
+          ownerName: settings.displayName,
+          timestamp: DateTime.now(),
+        );
+        await source.copy(finalPath);
+        finalSize = await settings.storage.fileSize(finalPath);
+        finalFolder = File(finalPath).parent.path;
+      }
+    } catch (_) {
+      // Sem permissao no destino: mantem o arquivo original, que ja
+      // funciona na biblioteca.
+      finalPath = _currentPath;
+      finalSize = await settings.storage.fileSize(finalPath);
+      finalFolder = _recording.folder;
+    }
+
     _recording = _recording.copyWith(
       transcript: _textController.text.trim(),
       duration: _duration,
+      filePath: finalPath,
+      fileSizeBytes: finalSize,
+      folder: finalFolder,
+      ownerName: settings.displayName,
     );
-    await _settings?.saveRecording(_recording);
-    await _settings?.setDraftTranscript(_recording.transcript);
+    await settings.saveRecording(_recording);
+    await settings.setDraftTranscript(_recording.transcript);
+
+    // Os arquivos intermediarios das edicoes nao tem mais uso.
+    await _cleanupTempFiles();
+
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Transcription saved')),
+      const SnackBar(content: Text('Gravacao salva')),
     );
+  }
+
+  /// Apaga os arquivos intermediarios gerados pelas edicoes.
+  Future<void> _cleanupTempFiles() async {
+    final settings = _settings;
+    if (settings == null) return;
+    for (final path in _tempFiles) {
+      if (path == _currentPath || path == _recording.filePath) continue;
+      await settings.storage.deleteFile(path);
+    }
+    _tempFiles.clear();
   }
 
   Future<void> _showMoreMenu() async {
@@ -393,6 +582,47 @@ class _EditingScreenState extends State<EditingScreen> {
                               }
                             }),
                           ),
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: _processing
+                                  ? null
+                                  : (_toolVolume
+                                      ? _applyVolume
+                                      : _applyEnhance),
+                              icon: _processing
+                                  ? const SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const AppIcon(
+                                      AppIcons.enhance,
+                                      size: 16,
+                                      color: AppColors.accentBright,
+                                    ),
+                              label: Text(
+                                _toolVolume
+                                    ? 'Aplicar volume'
+                                    : 'Aplicar efeito',
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.accentBright,
+                                side: const BorderSide(
+                                  color: AppColors.accentBright,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
                         ],
                         if (_toolTrim) ...[
                           const SizedBox(height: 14),
@@ -404,25 +634,7 @@ class _EditingScreenState extends State<EditingScreen> {
                               _trimStart = s;
                               _trimEnd = e;
                             }),
-                            onApply: () {
-                              final s = _trimStart;
-                              final e = _trimEnd;
-                              if (s != null && e != null && e > s) {
-                                setState(() {
-                                  _duration = e - s;
-                                  _position = 0;
-                                });
-                                _seek(0);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'Trimmed to '
-                                      '${formatDuration(_duration)}',
-                                    ),
-                                  ),
-                                );
-                              }
-                            },
+                            onApply: _applyTrim,
                           ),
                         ],
                         const SizedBox(height: 18),
