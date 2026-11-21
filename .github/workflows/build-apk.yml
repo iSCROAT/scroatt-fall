@@ -404,6 +404,32 @@ jobs:
               echo "::error title=Test::${line:0:900}"
             done < <(grep -E "\[E\]|Some tests failed|Expected:|Actual:" test.log | head -n 12)
           fi
+          # Publica o log dos testes no repo, com o mesmo padrao de git
+          # usado pelo step de log do build.
+          WORK="$(mktemp -d)"
+          {
+            echo "## Testes - run ${{ github.run_id }}"
+            echo
+            echo '```'
+            tail -n 200 test.log
+            echo '```'
+          } > "$WORK/testes-${{ github.run_id }}.md"
+          rm -rf "$WORK/repo"
+          git clone --depth=1 --branch "${{ github.ref_name }}" \
+            "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" \
+            "$WORK/repo" 2>&1 | tail -3 || true
+          if [ -d "$WORK/repo/.git" ]; then
+            cd "$WORK/repo"
+            mkdir -p ci-logs
+            cp "$WORK/testes-${{ github.run_id }}.md" \
+              "ci-logs/testes-${{ github.run_id }}.md"
+            git add -A ci-logs
+            git -c user.name="github-actions[bot]" \
+                -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+                commit -m "ci: log dos testes ${{ github.run_id }}" || true
+            git push origin "HEAD:refs/heads/${{ github.ref_name }}" 2>&1 | tail -5 || true
+          fi
+
           # Os testes nao derrubam o build: o APK ja foi gerado e
           # publicado, e o resultado dos testes aparece no resumo.
           exit 0
