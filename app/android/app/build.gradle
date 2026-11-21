@@ -14,11 +14,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-        // `flutter_local_notifications` exige core library desugaring
-        // para usar APIs de java.time em Android mais antigo.
-        // No AGP 8.x a propriedade e `coreLibraryDesugaringEnabled`
-        // (a variante `is...` pertence ao DSL do Kotlin).
-        coreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -36,24 +31,6 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-
-    }
-
-    // APKs separados por arquitetura.
-    //
-    // Sem isto o APK embute as bibliotecas nativas de todas as ABIs
-    // (arm64-v8a, armeabi-v7a, x86, x86_64) e o arquivo passa de 140 MB.
-    // Com o `split`, o CI produz `app-arm64-v8a-debug.apk` (~35 MB) e
-    // `app-armeabi-v7a-debug.apk` — o aparelho instala o que combina
-    // com a sua arquitetura. `universalApk` fica desligado para nao
-    // voltar a gerar o arquivo gigante.
-    splits {
-        abi {
-            enable true
-            reset()
-            include "arm64-v8a", "armeabi-v7a"
-            universalApk false
-        }
     }
 
     buildTypes {
@@ -73,11 +50,4 @@ android {
 
 flutter {
     source = "../.."
-}
-
-dependencies {
-    // Desugaring das APIs de java.time exigidas pelas notificacoes.
-    coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.1.4"
-    // NotificationCompat e NotificationChannel.
-    implementation "androidx.core:core-ktx:1.13.1"
 }
