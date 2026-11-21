@@ -420,6 +420,7 @@ jobs:
           python3 "$GITHUB_WORKSPACE/tools/publish_test_log.py" testes.md \
             "ci-logs/testes-${GITHUB_RUN_ID}.md" \
             "ci: log dos testes ${GITHUB_RUN_ID}" || true
+          echo "--- fim da publicacao do log ---" 
 
           # Os testes nao derrubam o build: o APK ja foi gerado e
           # publicado, e o resultado dos testes aparece no resumo.
