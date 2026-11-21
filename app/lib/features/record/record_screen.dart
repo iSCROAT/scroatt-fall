@@ -474,6 +474,14 @@ class _RecordScreenState extends State<RecordScreen>
 
   @override
   Widget build(BuildContext context) {
+    // O `AppScope` e um `InheritedNotifier`: ler `AppScope.of(context)`
+    // aqui registra a dependencia, entao o nome escolhido aparece na
+    // saudacao assim que a preferencia muda, com a tela aberta.
+    final currentName =
+        AppScope.maybeOf(context)?.displayNameOrDefault ?? 'there';
+    if (!_hasSpeech && _transcript != _greetingFor(currentName)) {
+      _transcript = _greetingFor(currentName);
+    }
     final meshPeaks = _recording
         ? _livePeaks
         : (_livePeaks.isNotEmpty ? _livePeaks : const <double>[]);
@@ -909,11 +917,14 @@ class _TranscriptBlock extends StatelessWidget {
                   color: AppColors.accentBright,
                 ),
                 const SizedBox(width: 7),
-                Text(
-                  'Tap to add a transcript',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppColors.accentBright.withValues(alpha: 0.9),
+                Flexible(
+                  child: Text(
+                    'Tap to add a transcript',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.accentBright.withValues(alpha: 0.9),
+                    ),
                   ),
                 ),
               ],
