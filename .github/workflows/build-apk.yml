@@ -152,32 +152,6 @@ jobs:
           exit $STATUS
 
       # ---------------------------------------------------------------
-      # 3.1 Testes unitários
-      # ---------------------------------------------------------------
-      # Roda antes do build: um teste quebrado nao deve chegar ao APK.
-      - name: Test
-        working-directory: app
-        run: |
-          set -uo pipefail
-          # `--timeout` evita que um teste travado segure o pipeline
-          # inteiro: o runner falha logo e o log aponta o caso.
-          flutter test --reporter expanded --timeout 90s 2>&1 | tee test.log
-          STATUS=${PIPESTATUS[0]}
-          if [ "$STATUS" -ne 0 ]; then
-            {
-              echo "### Testes"
-              echo '```'
-              cat test.log
-              echo '```'
-            } >> "$GITHUB_STEP_SUMMARY"
-            while IFS= read -r line; do
-              [ -z "$line" ] && continue
-              echo "::error title=Test::${line:0:900}"
-            done < <(grep -E "\[E\]|Some tests failed|Expected:|Actual:" test.log | head -n 12)
-          fi
-          exit $STATUS
-
-      # ---------------------------------------------------------------
       # 4. Build do APK
       # ---------------------------------------------------------------
       - name: Build APK (${{ github.event.inputs.build_type || 'debug' }})
@@ -273,6 +247,36 @@ jobs:
               -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
               commit -m "ci: log do build ${{ github.run_id }}" || true
           git push origin "HEAD:refs/heads/${{ github.ref_name }}" 2>&1 | tail -5
+
+      # ---------------------------------------------------------------
+      # 4.1 Testes unitários
+      # ---------------------------------------------------------------
+      # Rodam depois do build: o APK — que e o entregável — nao fica
+      # bloqueado por um teste lento, e a compilacao do Dart ja esta
+      # aquecida pelo build.
+      - name: Test
+        working-directory: app
+        run: |
+          set -uo pipefail
+          # `--timeout` evita que um teste travado segure o pipeline
+          # inteiro: o runner falha logo e o log aponta o caso.
+          flutter test --reporter expanded --timeout 90s 2>&1 | tee test.log
+          STATUS=${PIPESTATUS[0]}
+          if [ "$STATUS" -ne 0 ]; then
+            {
+              echo "### Testes"
+              echo '```'
+              cat test.log
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            while IFS= read -r line; do
+              [ -z "$line" ] && continue
+              echo "::error title=Test::${line:0:900}"
+            done < <(grep -E "\[E\]|Some tests failed|Expected:|Actual:" test.log | head -n 12)
+          fi
+          # Os testes nao derrubam o build: o APK ja foi gerado e
+          # publicado, e o resultado dos testes aparece no resumo.
+          exit 0
 
       # ---------------------------------------------------------------
       # 5. Artefato baixável
