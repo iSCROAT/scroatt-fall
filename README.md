@@ -34,8 +34,6 @@ gravação real de áudio, waveform ao vivo e edição de transcrição.
 | **Biblioteca** | Lista de gravações com busca por título/texto, duração total agregada e estado vazio |
 | **Permissões** | Detecção de recusa temporária vs. permanente, com atalho para as Configurações do sistema |
 | **Ajustes** | Idioma de transcrição, qualidade do áudio, filtros de gravação (redução de ruído, ganho automático, cancelamento de eco) |
-| **Nome do usuário** | Campo opcional nas configurações; o nome escolhido substitui o "Alex" fixo na saudação da transcrição |
-| **Animação da waveform** | Desligada por padrão (a malha redesenha milhares de segmentos por quadro e pesa em aparelhos modestos); ligável nas configurações |
 
 ---
 
@@ -62,21 +60,6 @@ de reprodução e a **barra de ferramentas** com as quatro ações do protótipo
 ### 4. Library — `lib/features/library/library_screen.dart`
 
 Lista de todas as gravações com capa, título, prévia da transcrição e duração.
-
----
-
-## Estado compartilhado
-
-As telas conversam por um estado único, exposto via `AppScope`:
-
-| Camada | Papel |
-|---|---|
-| `lib/services/app_settings.dart` | `ChangeNotifier` com gravações, rascunho da transcrição, nome e preferência de animação |
-| `lib/services/app_scope.dart` | `InheritedNotifier` que distribui o estado e reconstrói as telas interessadas |
-| `lib/services/user_preferences.dart` | Persistência do nome e da preferência de animação (`shared_preferences`) |
-
-Com isso a biblioteca deixa de manter uma cópia paralela das gravações: quem
-salva, renomeia ou apaga uma gravação atualiza a lista na hora.
 
 ---
 
@@ -176,68 +159,15 @@ para `main` ou branches `arena/**`, em todo PR e manualmente
 2. Configura o Android SDK e aceita as licenças.
 3. `flutter pub get` (com cache do `pub-cache`).
 4. `flutter analyze --no-fatal-infos` — não bloqueia o build.
-5. `flutter build apk --debug --split-per-abi` — um APK por arquitetura.
+5. `flutter build apk --debug` (ou `--release --split-per-abi`).
 6. Publica os `.apk` como **artefato baixável** do run
-   (`scroatt-apk-debug` / `scroatt-apk-release`), junto com o
-   `SHA256SUMS.txt`.
-7. Publica o **inventário** dos APKs (tamanho e SHA-256 de cada um) no
-   log do build e no resumo da execução.
-8. Se a ref for uma tag `v*`, cria um *draft release* com os APKs anexados.
-
-### Escolhendo o APK certo
-
-O build é separado por arquitetura porque o APK único embute as libs
-nativas de todas as ABIs e passa de **140 MB**. Cada arquivo gerado tem o
-nome da sua ABI:
-
-| Arquivo | Aparelhos | Tamanho |
-|---|---|---|
-| `scroott-arm64-v8a-release.apk` | Quase todo celular Android atual (64 bits) | **~19 MB** |
-| `scroott-armeabi-v7a-release.apk` | Aparelhos antigos de 32 bits | ~16 MB |
-| `scroott-x86_64-release.apk` | Emuladores de 64 bits | ~20 MB |
-| `scroott-arm64-v8a-debug.apk` | Variante de depuração (com ferramentas de debug) | ~80 MB |
-
-> **Prefira a variante `release`.** O APK de depuração carrega o motor
-> Flutter inteiro sem otimização e passa de 140 MB; o `release` é
-> enxuto e instala igual. Use o `debug` apenas se precisar attach de
-> debugger.
-
-Para saber a ABI do seu aparelho, em um terminal ADB:
-
-```bash
-adb shell getprop ro.product.cpu.abi
-```
-
-### Se o Android recusar o APK
-
-A mensagem **"Ocorreu um problema ao analisar o pacote"** tem três causas
-comuns, em ordem de frequência:
-
-1. **Versão do Android.** O app exige Android 6.0 (API 23) ou superior.
-   Em aparelhos mais antigos o sistema recusa o pacote. Confira em
-   *Configurações → Sobre do telefone*.
-2. **Download truncado.** O gerenciador de arquivos às vezes salva o
-   pacote pela metade. Compare o tamanho com a tabela acima e, se
-   estiver errado, baixe de novo.
-3. **Arquivo antigo na pasta.** Baixe o APK novo para uma pasta limpa —
-   o Android não reinstala por cima de um pacote com o mesmo nome e
-   assinatura diferente.
-
-### Conferindo o download
-
-O artifact vem com um `SHA256SUMS.txt`. Se o download sair truncado ou
-corrompido, a verificação denuncia:
-
-```bash
-sha256sum -c SHA256SUMS.txt
-```
-
-O resultado esperado é `scroott-arm64-v8a-debug.apk: OK`.
+   (`scroatt-apk-debug` / `scroatt-apk-release`).
+7. Se a ref for uma tag `v*`, cria um *draft release* com os APKs anexados.
 
 ### Baixando o artefato
 
 Na aba **Actions** do repositório, abra o run desejado e baixe o artefato
-`scroatt-apk-debug` no rodapé da página. Via CLI:
+`scrott-apk-debug` no rodapé da página. Via CLI:
 
 ```bash
 gh run download <run-id> -n scrott-apk-debug
