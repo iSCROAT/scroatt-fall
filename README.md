@@ -296,17 +296,66 @@ python3 -m venv .venv && .venv/bin/pip install tree_sitter
 
 ---
 
+## Onde o áudio é salvo (v3)
+
+O Android guarda cada app num diretório privado
+(`/data/user/0/<pacote>/app_flutter`) que **nenhum gerenciador de arquivos
+mostra**. Era essa a razão de a gravação "desaparecer" do aparelho.
+
+Na v3 o destino é explícito e configurável em **Ajustes → Onde salvar**:
+
+| Destino | Caminho | Visível no gerenciador |
+|---|---|---|
+| Downloads (padrão) | `/storage/emulated/0/Download/Scroatt` | Sim |
+| Pasta do app | `/storage/emulated/0/Android/data/com.scrott.voice/files/Scroott` | Parcial |
+| Privado do app | `/data/user/0/com.scrott.voice/app_flutter/Scroatt` | Não |
+
+O arquivo carrega o **nome escolhido no app**, a data e a hora:
+
+```
+Samuel_2026-11-21_05-25-33.m4a
+```
+
+Se o destino escolhido não estiver disponível, o app cai no diretório
+privado em vez de perder a gravação.
+
+---
+
+## Editor de áudio real (v3)
+
+As três ferramentas do editor processam o **arquivo de verdade**:
+
+| Ferramenta | O que faz |
+|---|---|
+| Trim | recorta o áudio entre os dois marcadores |
+| Volume | aplica ganho linear (0× a 4×) com limite de distorção |
+| Efeito de voz | realce de agudos, eco curto e normalização de pico |
+
+O arquivo `.m4a` guarda áudio AAC, que não pode ser editado quadro a
+quadro. O pacote `audio_decoder` converte o arquivo em PCM usando as APIs
+nativas do Android (`MediaExtractor` + `MediaCodec`), sem FFmpeg; a partir
+do PCM o processamento é direto. O resultado é gravado em WAV, que
+qualquer player reproduce.
+
+---
+
+## Sincronização com áudios já salvos (v3)
+
+O botão de sincronização na biblioteca varre a pasta configurada e indexa
+os arquivos de áudio que ainda não estão no índice do app — com data de
+modificação, tamanho e pasta de origem.
+
+---
+
 ## Limitações conhecidas
 
 - **Transcrição automática**: o MVP carrega o texto a partir do rascunho
   digitado pelo usuário. Conectar um serviço de *speech-to-text* (Google,
   Whisper local, ou a Speech Recognition API do Android) é o próximo passo
   natural — a camada `Recording.transcript` já está isolada para isso.
-- **Filtros de áudio**: os interruptores de ruído/eco na tela de ajustes
-  controlam a captura nativa (`RecordConfig.autoGain`, `noiseSuppress`,
-  `echoCancel`); o *enhancer* visual ainda não processa o arquivo gravado.
-- **Trim**: a faixa selecionada atualiza a duração exibida e a posição de
-  reprodução, mas ainda não recorta o arquivo de áudio em disco.
+- **Gravação em Downloads**: no Android 10+ a gravação nessa pasta passa
+  pelo MediaStore, o que dispensa permissão de armazenamento. Aparelhos
+  com Android 9 ou anteriores pedem a permissão de armazenamento.
 - **iOS**: o projeto está configurado apenas para Android. O `ios/` gerado
   por `flutter create` precisa ser adicionado com as chaves
   `NSMicrophoneUsageDescription` e `NSAppTransportSecurity`.
