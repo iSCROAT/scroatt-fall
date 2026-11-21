@@ -23,6 +23,15 @@ Future<AppSettings> pumpRecorder(
     ),
   );
   await tester.pump(const Duration(milliseconds: 300));
+
+  // A tela de gravacao tem uma animacao em laco e um ticker periodico.
+  // Sem desmontar a arvore no fim do teste, o runner continua esperando
+  // por elas e o teste nao termina.
+  addTearDown(() async {
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+  });
+
   return settings;
 }
 
