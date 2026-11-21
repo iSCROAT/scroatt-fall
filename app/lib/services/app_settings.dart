@@ -29,6 +29,17 @@ class AppSettings extends ChangeNotifier {
   List<Recording> _recordings = <Recording>[];
   String _draftTranscript = '';
 
+  /// Carrega as preferencias persistidas.
+  ///
+  /// E seguro chamar varias vezes: a operacao so roda uma vez, de modo
+  /// que telas e testes possam chamar `ensureLoaded` sem se preocupar com
+  /// a ordem.
+  Future<void>? _loading;
+
+  Future<void> ensureLoaded() {
+    return _loading ??= _preferences.load();
+  }
+
   /// Gravacoes salvas, da mais recente para a mais antiga.
   List<Recording> get recordings => List.unmodifiable(_recordings);
 
@@ -131,60 +142,70 @@ class AppSettings extends ChangeNotifier {
 
   /// Define o nome de exibicao do usuario.
   Future<void> setDisplayName(String name) async {
+    await ensureLoaded();
     await _preferences.setDisplayName(name);
     notifyListeners();
   }
 
   /// Liga ou desliga as animacoes pesadas.
   Future<void> setAnimationsEnabled(bool enabled) async {
+    await ensureLoaded();
     await _preferences.setAnimationsEnabled(enabled);
     notifyListeners();
   }
 
   /// Define o idioma de transcricao.
   Future<void> setTranscriptionLanguage(String code) async {
+    await ensureLoaded();
     await _preferences.setTranscriptionLanguage(code);
     notifyListeners();
   }
 
   /// Define o destino dos arquivos de audio.
   Future<void> setStorageLocation(StorageLocation location) async {
+    await ensureLoaded();
     await _preferences.setStorageLocation(location);
     notifyListeners();
   }
 
   /// Define a pasta personalizada dentro do destino escolhido.
   Future<void> setCustomFolder(String folder) async {
+    await ensureLoaded();
     await _preferences.setCustomFolder(folder);
     notifyListeners();
   }
 
   /// Define a qualidade do audio.
   Future<void> setAudioQuality(int kbps) async {
+    await ensureLoaded();
     await _preferences.setAudioQuality(kbps);
     notifyListeners();
   }
 
   /// Define se as gravacoes permanecem no aparelho.
   Future<void> setKeepOnDevice(bool value) async {
+    await ensureLoaded();
     await _preferences.setKeepOnDevice(value);
     notifyListeners();
   }
 
   /// Define a supressao de ruido na captura.
   Future<void> setNoiseSuppress(bool value) async {
+    await ensureLoaded();
     await _preferences.setNoiseSuppress(value);
     notifyListeners();
   }
 
   /// Define o ganho automatico na captura.
   Future<void> setAutoGain(bool value) async {
+    await ensureLoaded();
     await _preferences.setAutoGain(value);
     notifyListeners();
   }
 
   /// Define o cancelamento de eco na captura.
   Future<void> setEchoCancel(bool value) async {
+    await ensureLoaded();
     await _preferences.setEchoCancel(value);
     notifyListeners();
   }
