@@ -417,9 +417,10 @@ jobs:
           } > testes.md
           # O script de publicacao vive no proprio repo, entao a
           # indentacao do YAML nao atrapalha o codigo Python.
+          GITHUB_TOKEN="${{ github.token }}" \
           python3 "$GITHUB_WORKSPACE/tools/publish_test_log.py" testes.md \
             "ci-logs/testes-${GITHUB_RUN_ID}.md" \
-            "ci: log dos testes ${GITHUB_RUN_ID}" || true
+            "ci: log dos testes ${GITHUB_RUN_ID}" 2>&1 | tail -5 || true
           echo "--- fim da publicacao do log ---" 
 
           # Os testes nao derrubam o build: o APK ja foi gerado e
