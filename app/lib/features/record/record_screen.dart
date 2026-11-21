@@ -892,14 +892,17 @@ class _TranscriptBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Sem fala, o bloco mostra a saudacao inicial (o nome escolhido pelo
+    // usuario) e o convite para editar a transcricao. Depois da primeira
+    // transcricao, o texto e o proprio conteudo.
     if (!hasSpeech) {
       return GestureDetector(
         onTap: onEdit,
         child: Column(
           children: [
-            const Text(
-              'Listening…',
-              style: TextStyle(
+            Text(
+              transcript,
+              style: const TextStyle(
                 fontSize: 25,
                 height: 1.24,
                 fontWeight: FontWeight.w600,
