@@ -415,28 +415,8 @@ jobs:
             tail -n 200 test.log
             echo '```'
           } > testes.md
-          echo 'aW1wb3J0IGJhc2U2NAppbXBvcnQganNvbgppbXBvcnQgb3MKaW1wb3J0IHVybGxpYi5yZXF1ZXN0
-            CgpyZXBvID0gb3MuZW52aXJvblsiR0lUSFVCX1JFUE9TSVRPUlkiXQpyZWYgPSBvcy5lbnZpcm9u
-            WyJHSVRIVUJfUkVGX05BTUUiXQpydW4gPSBvcy5lbnZpcm9uWyJHSVRIVUJfUlVOX0lEIl0KdG9r
-            ZW4gPSBvcy5lbnZpcm9uWyJHSVRIVUJfVE9LRU4iXQpwYXRoID0gImNpLWxvZ3MvdGVzdGVzLSVz
-            Lm1kIiAlIHJ1bgoKd2l0aCBvcGVuKCJ0ZXN0ZXMubWQiLCAicmIiKSBhcyBmaDoKICAgIGNvbnRl
-            bnQgPSBiYXNlNjQuYjY0ZW5jb2RlKGZoLnJlYWQoKSkuZGVjb2RlKCkKCmhlYWRlcnMgPSB7CiAg
-            ICAiQXV0aG9yaXphdGlvbiI6ICJCZWFyZXIgIiArIHRva2VuLAogICAgIkFjY2VwdCI6ICJhcHBs
-            aWNhdGlvbi92bmQuZ2l0aHViK2pzb24iLAogICAgIlgtR2l0SHViLUFwaS1WZXJzaW9uIjogIjIw
-            MjItMTEtMjgiLAogICAgIkNvbnRlbnQtVHlwZSI6ICJhcHBsaWNhdGlvbi9qc29uIiwKfQpiYXNl
-            ID0gImh0dHBzOi8vYXBpLmdpdGh1Yi5jb20vcmVwb3MvJXMvY29udGVudHMvJXMiICUgKHJlcG8s
-            IHBhdGgpCgoKZGVmIGNhbGwodXJsLCBtZXRob2Q9IkdFVCIsIGJvZHk9Tm9uZSk6CiAgICBkYXRh
-            ID0ganNvbi5kdW1wcyhib2R5KS5lbmNvZGUoKSBpZiBib2R5IGlzIG5vdCBOb25lIGVsc2UgTm9u
-            ZQogICAgcmVxID0gdXJsbGliLnJlcXVlc3QuUmVxdWVzdCh1cmwsIGRhdGE9ZGF0YSwgbWV0aG9k
-            PW1ldGhvZCwgaGVhZGVycz1oZWFkZXJzKQogICAgd2l0aCB1cmxsaWIucmVxdWVzdC51cmxvcGVu
-            KHJlcSwgdGltZW91dD02MCkgYXMgcmVzcDoKICAgICAgICByZXR1cm4ganNvbi5sb2FkcyhyZXNw
-            LnJlYWQoKS5kZWNvZGUoKSBvciAie30iKQoKCnNoYSA9IE5vbmUKdHJ5OgogICAgc2hhID0gY2Fs
-            bChiYXNlICsgIj9yZWY9IiArIHJlZikuZ2V0KCJzaGEiKQpleGNlcHQgRXhjZXB0aW9uOgogICAg
-            c2hhID0gTm9uZQoKYm9keSA9IHsKICAgICJtZXNzYWdlIjogImNpOiBsb2cgZG9zIHRlc3RlcyAi
-            ICsgcnVuLAogICAgImNvbnRlbnQiOiBjb250ZW50LAogICAgImJyYW5jaCI6IHJlZiwKfQppZiBz
-            aGE6CiAgICBib2R5WyJzaGEiXSA9IHNoYQpjYWxsKGJhc2UsIG1ldGhvZD0iUFVUIiwgYm9keT1i
-            b2R5KQpwcmludCgibG9nIGRvcyB0ZXN0ZXMgcHVibGljYWRvIikK' > publicar_testes.b64
-          python3 -c "import base64,sys; open('publicar_testes.py','wb').write(base64.b64decode(open('publicar_testes.b64').read()))"
+          printf '%s' 'aW1wb3J0IGJhc2U2NAppbXBvcnQganNvbgppbXBvcnQgb3MKaW1wb3J0IHVybGxpYi5yZXF1ZXN0CgpyZXBvID0gb3MuZW52aXJvblsiR0lUSFVCX1JFUE9TSVRPUlkiXQpyZWYgPSBvcy5lbnZpcm9uWyJHSVRIVUJfUkVGX05BTUUiXQpydW4gPSBvcy5lbnZpcm9uWyJHSVRIVUJfUlVOX0lEIl0KdG9rZW4gPSBvcy5lbnZpcm9uWyJHSVRIVUJfVE9LRU4iXQpwYXRoID0gImNpLWxvZ3MvdGVzdGVzLSIgKyBydW4gKyAiLm1kIgoKd2l0aCBvcGVuKCJ0ZXN0ZXMubWQiLCAicmIiKSBhcyBmaDoKICAgIGNvbnRlbnQgPSBiYXNlNjQuYjY0ZW5jb2RlKGZoLnJlYWQoKSkuZGVjb2RlKCkKCmhlYWRlcnMgPSB7CiAgICAiQXV0aG9yaXphdGlvbiI6ICJCZWFyZXIgIiArIHRva2VuLAogICAgIkFjY2VwdCI6ICJhcHBsaWNhdGlvbi92bmQuZ2l0aHViK2pzb24iLAogICAgIlgtR2l0SHViLUFwaS1WZXJzaW9uIjogIjIwMjItMTEtMjgiLAogICAgIkNvbnRlbnQtVHlwZSI6ICJhcHBsaWNhdGlvbi9qc29uIiwKfQpiYXNlID0gImh0dHBzOi8vYXBpLmdpdGh1Yi5jb20vcmVwb3MvIiArIHJlcG8gKyAiL2NvbnRlbnRzLyIgKyBwYXRoCgoKZGVmIGNhbGwodXJsLCBtZXRob2Q9IkdFVCIsIGJvZHk9Tm9uZSk6CiAgICBkYXRhID0ganNvbi5kdW1wcyhib2R5KS5lbmNvZGUoKSBpZiBib2R5IGlzIG5vdCBOb25lIGVsc2UgTm9uZQogICAgcmVxID0gdXJsbGliLnJlcXVlc3QuUmVxdWVzdCh1cmwsIGRhdGE9ZGF0YSwgbWV0aG9kPW1ldGhvZCwgaGVhZGVycz1oZWFkZXJzKQogICAgd2l0aCB1cmxsaWIucmVxdWVzdC51cmxvcGVuKHJlcSwgdGltZW91dD02MCkgYXMgcmVzcDoKICAgICAgICByZXR1cm4ganNvbi5sb2FkcyhyZXNwLnJlYWQoKS5kZWNvZGUoKSBvciAie30iKQoKCnNoYSA9IE5vbmUKdHJ5OgogICAgc2hhID0gY2FsbChiYXNlICsgIj9yZWY9IiArIHJlZikuZ2V0KCJzaGEiKQpleGNlcHQgRXhjZXB0aW9uOgogICAgc2hhID0gTm9uZQoKYm9keSA9IHsKICAgICJtZXNzYWdlIjogImNpOiBsb2cgZG9zIHRlc3RlcyAiICsgcnVuLAogICAgImNvbnRlbnQiOiBjb250ZW50LAogICAgImJyYW5jaCI6IHJlZiwKfQppZiBzaGE6CiAgICBib2R5WyJzaGEiXSA9IHNoYQpjYWxsKGJhc2UsIG1ldGhvZD0iUFVUIiwgYm9keT1ib2R5KQpwcmludCgibG9nIGRvcyB0ZXN0ZXMgcHVibGljYWRvIikK' > publicar_testes.b64
+          python3 -c "import base64;open('publicar_testes.py','wb').write(base64.b64decode(open('publicar_testes.b64').read()))"
           python3 publicar_testes.py || true
           {
             echo "## Testes - run ${{ github.run_id }}"
