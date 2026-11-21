@@ -294,6 +294,33 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       # ---------------------------------------------------------------
+      # 5c. Publica o inventario dos APKs no repositorio
+      #
+      # O step acima grava o inventario no resumo da execucao; este
+      # step deixa o arquivo no branch, onde o inventario de cada build
+      # fica no historico para consulta.
+      - name: Publish APK inventory
+        if: always()
+        run: |
+          set -uo pipefail
+          [ -f app/apk-inventory.txt ] || exit 0
+
+          WORK="$(mktemp -d)"
+          rm -rf "$WORK/repo"
+          git clone --depth=1 --branch "${{ github.ref_name }}" \
+            "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" \
+            "$WORK/repo" 2>&1 | tail -3 || exit 0
+          cd "$WORK/repo"
+          mkdir -p ci-logs
+          cp "$GITHUB_WORKSPACE/app/apk-inventory.txt" \
+            "ci-logs/apks-${{ github.run_id }}.md"
+          git add -A ci-logs
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -m "ci: inventario dos APKs ${{ github.run_id }}" || true
+          git push origin "HEAD:refs/heads/${{ github.ref_name }}" 2>&1 | tail -3
+
+      # ---------------------------------------------------------------
       # 6. Release (apenas na main, quando há tag)
       # ---------------------------------------------------------------
       - name: Publish to GitHub Releases
