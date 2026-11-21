@@ -6,15 +6,29 @@ import 'package:scrott_voice/features/onboarding/welcome_screen.dart';
 import 'package:scrott_voice/services/app_scope.dart';
 import 'package:scrott_voice/services/app_settings.dart';
 
+/// Monta a tela inicial dentro de um [AppScope].
+///
+/// A tela le o estado compartilhado (nome do usuario, preferencia de
+/// animacao), entao precisa do `AppScope` por volta.
+Future<void> pumpWelcome(WidgetTester tester) async {
+  final settings = AppSettings();
+  await tester.pumpWidget(
+    AppScope(
+      settings: settings,
+      child: const MaterialApp(
+        home: Scaffold(body: WelcomeScreen()),
+      ),
+    ),
+  );
+  // A orbita brilha em laco; `pumpAndSettle` nunca terminaria, entao o
+  // tempo avanca de forma fixa.
+  await tester.pump(const Duration(milliseconds: 600));
+}
+
 void main() {
   testWidgets('a tela inicial exibe título, subtítulo e o botão Start Now',
       (tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(body: WelcomeScreen()),
-      ),
-    );
-    await tester.pumpAndSettle(const Duration(seconds: 2));
+    await pumpWelcome(tester);
 
     expect(find.text('Speech\nRecognition'), findsOneWidget);
     expect(
@@ -26,35 +40,27 @@ void main() {
 
   testWidgets('o botão Start Now navega para a tela de gravação',
       (tester) async {
-    // A tela de gravação lê o estado compartilhado (nome do usuário,
-    // preferência de animação), então precisa do `AppScope` por volta.
-    final settings = AppSettings();
-    await tester.pumpWidget(
-      AppScope(
-        settings: settings,
-        child: const MaterialApp(
-          home: Scaffold(body: WelcomeScreen()),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle(const Duration(seconds: 2));
+    await pumpWelcome(tester);
 
     await tester.tap(find.text('Start Now'));
-    await tester.pumpAndSettle(const Duration(seconds: 1));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
 
     // A tela de gravação tem o título "Record" na barra superior.
     expect(find.text('Record'), findsOneWidget);
   });
 
   testWidgets('usa o fundo escuro do tema do app', (tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(body: WelcomeScreen()),
+    await pumpWelcome(tester);
+
+    // A tela inicial tem o proprio `Scaffold`, com o fundo escuro do
+    // tema — o `Scaffold` externo do teste é o do harness.
+    final scaffold = tester.widget<Scaffold>(
+      find.descendant(
+        of: find.byType(WelcomeScreen),
+        matching: find.byType(Scaffold),
       ),
     );
-    await tester.pump();
-
-    final scaffold = tester.widget<Scaffold>(find.byType(Scaffold).first);
     expect(scaffold.backgroundColor, AppColors.background);
   });
 
