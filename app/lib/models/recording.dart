@@ -112,7 +112,7 @@ class Recording {
   /// Previa de uma linha do texto, usada nos cards da biblioteca.
   String get preview {
     final clean = transcript.trim().replaceAll(RegExp(r'\s+'), ' ');
-    if (clean.isEmpty) return 'Sem transcricao';
+    if (clean.isEmpty) return 'Sem transcrição';
     return clean.length <= 90 ? clean : '${clean.substring(0, 90)}…';
   }
 
