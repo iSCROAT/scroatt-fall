@@ -162,10 +162,12 @@ class StorageService {
 
   /// Remove os characteres que nao podem entrar em um nome de arquivo.
   String _sanitize(String value) {
+    // Cada caractere proibido vira um separador, e espacos viram "_".
+    // Assim "Maria / Silva" vira "Maria__Silva": as duas partes do nome
+    // continuam separadas no arquivo, sem perder a informacao.
     final cleaned = value
         .trim()
-        .replaceAll(RegExp(r'[\\/:*?"<>|]'), '')
-        .replaceAll(RegExp(r'\s+'), '_');
+        .replaceAll(RegExp(r'[\\/:*?"<>|\s]+'), '_');
     return cleaned.isEmpty ? 'Scroatt' : cleaned;
   }
 
