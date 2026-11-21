@@ -77,16 +77,24 @@ class NotificationService {
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
     const settings = InitializationSettings(android: android);
 
-    await _plugin.initialize(
-      settings,
-      onDidReceiveNotificationResponse: _handleResponse,
-      onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
-    );
+    try {
+      await _plugin.initialize(
+        settings,
+        onDidReceiveNotificationResponse: _handleResponse,
+        onDidReceiveBackgroundNotificationResponse:
+            notificationTapBackground,
+      );
 
-    final androidPlugin = _plugin
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>();
-    await androidPlugin?.createNotificationChannel(_channel);
+      final androidPlugin = _plugin
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>();
+      await androidPlugin?.createNotificationChannel(_channel);
+    } catch (_) {
+      // Em ambiente de teste (ou sem o canal nativo registrado) o plugin
+      // nao tem implementacao de plataforma. A gravacao continua
+      // funcionando; so a notificacao persistente fica indisponivel.
+      return;
+    }
 
     _actionChannel.setMethodCallHandler(_handleNativeCall);
 
