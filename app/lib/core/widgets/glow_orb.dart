@@ -102,7 +102,7 @@ class _OrbPainter extends CustomPainter {
     final radius = math.min(size.width, size.height) / 2;
 
     // ---- Halo de fundo -------------------------------------------------
-    final haloPaint = const Paint()
+    final haloPaint = Paint()
       ..shader = RadialGradient(
         colors: [
           AppColors.waveDeep.withValues(alpha: 0.32 * intensity),
