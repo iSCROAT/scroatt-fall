@@ -88,7 +88,7 @@ class _GlowOrbState extends State<GlowOrb>
 /// Construir um `MaskFilter` a cada quadro aloca memoria nativa e
 /// força o motor a recalcular o raio de desfoque; guardar em uma
 /// constante tira esse trabalho do laco de animacao.
-final MaskFilter _glowBlur = MaskFilter.blur(BlurStyle.normal, 7);
+const MaskFilter _glowBlur = MaskFilter.blur(BlurStyle.normal, 7);
 
 class _OrbPainter extends CustomPainter {
   _OrbPainter({required this.phase, required this.intensity});
@@ -102,7 +102,7 @@ class _OrbPainter extends CustomPainter {
     final radius = math.min(size.width, size.height) / 2;
 
     // ---- Halo de fundo -------------------------------------------------
-    final haloPaint = Paint()
+    final haloPaint = const Paint()
       ..shader = RadialGradient(
         colors: [
           AppColors.waveDeep.withValues(alpha: 0.32 * intensity),
