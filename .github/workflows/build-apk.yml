@@ -26,9 +26,11 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # Flutter 3.35.7 traz Dart 3.9.2 — compatível com `record` 6.x e com o
-  # AGP 8.7 usado no projeto Android.
-  FLUTTER_VERSION: "3.35.7"
+  # Flutter 3.50.1 traz Dart 3.14 — necessário para o `audio_decoder`
+  # (exige Dart >= 3.10.8), que faz a decodificacao real do audio no
+  # editor. Os demais pacotes (`record` 6.x, `just_audio`,
+  # `flutter_local_notifications` 18.x) aceitam essa versao.
+  FLUTTER_VERSION: "3.50.1"
   JAVA_VERSION: "17"
 
 jobs:
