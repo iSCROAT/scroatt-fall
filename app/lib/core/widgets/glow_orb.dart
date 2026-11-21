@@ -32,7 +32,7 @@ class _GlowOrbState extends State<GlowOrb>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: const Duration(seconds: 18),
+    duration: const Duration(seconds: 24),
   );
 
   @override
@@ -64,16 +64,31 @@ class _GlowOrbState extends State<GlowOrb>
       height: widget.size,
       child: AnimatedBuilder(
         animation: _controller,
-        builder: (context, _) => CustomPaint(
-          painter: _OrbPainter(
-            phase: _controller.value * 2 * math.pi,
-            intensity: widget.intensity,
-          ),
-        ),
+        builder: (context, _) {
+          // Sem animacao, desenhamos um unico quadro estatico — o orbe
+          // continua bonito, mas o app para de redesenhar 60 vezes por
+          // segundo enquanto a tela inicial esta aberta.
+          final phase = widget.animate
+              ? _controller.value * 2 * math.pi
+              : 0.35 * math.pi;
+          return CustomPaint(
+            painter: _OrbPainter(
+              phase: phase,
+              intensity: widget.intensity,
+            ),
+          );
+        },
       ),
     );
   }
 }
+
+/// Desfoque do brilho — criado uma vez e reaproveitado.
+///
+/// Construir um `MaskFilter` a cada quadro aloca memoria nativa e
+/// força o motor a recalcular o raio de desfoque; guardar em uma
+/// constante tira esse trabalho do laco de animacao.
+final MaskFilter _glowBlur = MaskFilter.blur(BlurStyle.normal, 7);
 
 class _OrbPainter extends CustomPainter {
   _OrbPainter({required this.phase, required this.intensity});
@@ -99,7 +114,11 @@ class _OrbPainter extends CustomPainter {
     canvas.drawCircle(center, radius * 0.98, haloPaint);
 
     // ---- Fitas ---------------------------------------------------------
-    const ribbons = 7;
+    //
+    // Cinco fitas desenham o mesmo no organico do original com menos
+    // trabalho: cada uma custa tres paths (brilho com desfoque, traco e
+    // fio interno), e sete delas meantiam 21 desenhos por quadro.
+    const ribbons = 5;
     for (var r = 0; r < ribbons; r++) {
       final spin = phase + r * 0.82;
       final path = _ribbonPath(center, radius, spin, r);
@@ -116,12 +135,14 @@ class _OrbPainter extends CustomPainter {
         stops: const [0.0, 0.38, 0.72, 1.0],
       ).createShader(Offset.zero & size);
 
-      // Glow
+      // Glow — o `Paint` e reaproveitado entre as fitas e entre os
+      // quadros: criar um `MaskFilter` novo a cada quadro era um dos
+      // maiores custos da tela inicial.
       final glowPaint = Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 5.5
         ..shader = shader
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 7);
+        ..maskFilter = _glowBlur;
       canvas.drawPath(path, glowPaint);
 
       // Traço principal
