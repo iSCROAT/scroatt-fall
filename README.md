@@ -190,17 +190,38 @@ O build é separado por arquitetura porque o APK único embute as libs
 nativas de todas as ABIs e passa de **140 MB**. Cada arquivo gerado tem o
 nome da sua ABI:
 
-| Arquivo | Aparelhos |
-|---|---|
-| `scroott-arm64-v8a-debug.apk` | Quase todo celular Android atual (64 bits) |
-| `scroott-armeabi-v7a-debug.apk` | Aparelhos antigos de 32 bits |
-| `scroott-x86_64-debug.apk` | Emuladores de 64 bits |
+| Arquivo | Aparelhos | Tamanho |
+|---|---|---|
+| `scroott-arm64-v8a-release.apk` | Quase todo celular Android atual (64 bits) | **~19 MB** |
+| `scroott-armeabi-v7a-release.apk` | Aparelhos antigos de 32 bits | ~16 MB |
+| `scroott-x86_64-release.apk` | Emuladores de 64 bits | ~20 MB |
+| `scroott-arm64-v8a-debug.apk` | Variante de depuração (com ferramentas de debug) | ~80 MB |
+
+> **Prefira a variante `release`.** O APK de depuração carrega o motor
+> Flutter inteiro sem otimização e passa de 140 MB; o `release` é
+> enxuto e instala igual. Use o `debug` apenas se precisar attach de
+> debugger.
 
 Para saber a ABI do seu aparelho, em um terminal ADB:
 
 ```bash
 adb shell getprop ro.product.cpu.abi
 ```
+
+### Se o Android recusar o APK
+
+A mensagem **"Ocorreu um problema ao analisar o pacote"** tem três causas
+comuns, em ordem de frequência:
+
+1. **Versão do Android.** O app exige Android 6.0 (API 23) ou superior.
+   Em aparelhos mais antigos o sistema recusa o pacote. Confira em
+   *Configurações → Sobre do telefone*.
+2. **Download truncado.** O gerenciador de arquivos às vezes salva o
+   pacote pela metade. Compare o tamanho com a tabela acima e, se
+   estiver errado, baixe de novo.
+3. **Arquivo antigo na pasta.** Baixe o APK novo para uma pasta limpa —
+   o Android não reinstala por cima de um pacote com o mesmo nome e
+   assinatura diferente.
 
 ### Conferindo o download
 
