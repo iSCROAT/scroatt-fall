@@ -125,7 +125,7 @@ void main() {
     test('guarda o nome do dono e a pasta', () {
       final r = buildRecording();
       expect(r.ownerName, 'Samuel');
-      expect(r.folder, '/storage/emulated/0/Download/Scrott');
+      expect(r.folder, '/storage/emulated/0/Download/Scroatt');
     });
 
     test('sobrevive a serializacao em JSON', () {
