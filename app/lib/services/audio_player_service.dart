@@ -33,6 +33,15 @@ class AudioPlayerService {
     await _player.play();
   }
 
+  /// Carrega outro arquivo no player.
+  ///
+  /// Usado pelo editor: depois de cortar ou aplicar um efeito, a
+  /// reproducao passa a usar o arquivo processado.
+  Future<void> setFile(String path) async {
+    _bindStreams();
+    await _player.setFilePath(path);
+  }
+
   Future<void> pause() => _player.pause();
 
   Future<void> stop() => _player.stop();
