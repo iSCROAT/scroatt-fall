@@ -96,7 +96,12 @@ class NotificationService {
       return;
     }
 
-    _actionChannel.setMethodCallHandler(_handleNativeCall);
+    try {
+      _actionChannel.setMethodCallHandler(_handleNativeCall);
+    } catch (_) {
+      // Sem plataforma nativa o handler nao pode ser registrado; a
+      // gravacao segue funcionando sem as acoes rapidas.
+    }
 
     _initialized = true;
   }
