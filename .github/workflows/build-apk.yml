@@ -152,6 +152,30 @@ jobs:
           exit $STATUS
 
       # ---------------------------------------------------------------
+      # 3.1 Testes unitários
+      # ---------------------------------------------------------------
+      # Roda antes do build: um teste quebrado nao deve chegar ao APK.
+      - name: Test
+        working-directory: app
+        run: |
+          set -uo pipefail
+          flutter test --reporter expanded 2>&1 | tee test.log
+          STATUS=${PIPESTATUS[0]}
+          if [ "$STATUS" -ne 0 ]; then
+            {
+              echo "### Testes"
+              echo '```'
+              cat test.log
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            while IFS= read -r line; do
+              [ -z "$line" ] && continue
+              echo "::error title=Test::${line:0:900}"
+            done < <(grep -E "\[E\]|Some tests failed|Expected:|Actual:" test.log | head -n 12)
+          fi
+          exit $STATUS
+
+      # ---------------------------------------------------------------
       # 4. Build do APK
       # ---------------------------------------------------------------
       - name: Build APK (${{ github.event.inputs.build_type || 'debug' }})
