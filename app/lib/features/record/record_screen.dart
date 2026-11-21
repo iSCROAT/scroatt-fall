@@ -1,9 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:path_provider/path_provider.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/formatters.dart';
@@ -12,6 +12,8 @@ import '../../core/widgets/waveform_view.dart';
 import '../../models/recording.dart';
 import '../../services/app_scope.dart';
 import '../../services/app_settings.dart';
+import '../../services/storage_service.dart';
+import '../../services/user_preferences.dart';
 import '../../services/audio_recorder_service.dart';
 import '../../services/notification_service.dart';
 
@@ -278,9 +280,25 @@ class _RecordScreenState extends State<RecordScreen>
 
     unawaited(HapticFeedback.mediumImpact());
     try {
-      final dir = await getApplicationDocumentsDirectory();
-      final path =
-          '${dir.path}/rec_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      // O destino vem das configuracoes e o nome do arquivo carrega o
+      // nome escolhido no app — antes, o audio ia para o diretorio
+      // privado do Android, invisivel no gerenciador de arquivos.
+      final settings = _settings!;
+
+      // Os parametros de captura (taxa de bits, ruido, ganho, eco) vem
+      // das configuracoes e valem para esta gravacao.
+      _recorder.applyPreferences(
+        qualityKbps: settings.audioQuality,
+        autoGain: settings.autoGain,
+        noiseSuppress: settings.noiseSuppress,
+        echoCancel: settings.echoCancel,
+      );
+
+      final path = await settings.storage.buildFilePath(
+        location: settings.storageLocation,
+        ownerName: settings.displayName,
+        timestamp: DateTime.now(),
+      );
 
       setState(() {
         _livePeaks.clear();
@@ -342,6 +360,15 @@ class _RecordScreenState extends State<RecordScreen>
       return;
     }
 
+    // Medimos o arquivo recem-escrito: o tamanho e a data de modificacao
+    // vao para o indice, e a biblioteca mostra os dois sem precisar ler
+    // o disco a cada abertura.
+    final settings = _settings;
+    final fileSize = await settings?.storage.fileSize(path) ?? 0;
+    final fileStat = File(path).existsSync()
+        ? File(path).statSync()
+        : null;
+
     final recording = Recording(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       filePath: path,
@@ -349,9 +376,12 @@ class _RecordScreenState extends State<RecordScreen>
       duration: duration,
       transcript: _transcript,
       amplitudePeaks: peaks,
+      ownerName: settings?.displayName ?? '',
+      fileSizeBytes: fileSize,
+      folder: fileStat?.parent.path ?? '',
     );
 
-    await _settings?.saveRecording(recording);
+    await settings?.saveRecording(recording);
 
     if (!mounted) return;
     await Navigator.of(context).push(
@@ -1438,40 +1468,130 @@ class _SettingsSheet extends StatefulWidget {
 }
 
 class _SettingsSheetState extends State<_SettingsSheet> {
-  String _language = 'en-US';
-  bool _saveToDevice = true;
-  double _quality = 128;
-
-  /// Estado compartilhado — guarda o nome e a preferência de animação.
+  /// Estado compartilhado — guarda nome, idioma, destino do áudio e as
+  /// preferências de captura. Tudo aqui é persistido assim que muda.
   AppSettings? _settings;
 
   /// Controller do campo de nome; o texto inicial vem das preferências.
   final TextEditingController _nameController = TextEditingController();
 
-  /// Estado local do toggle de animação.
-  bool _animationsEnabled = false;
+  /// Controller da pasta personalizada dentro do destino escolhido.
+  final TextEditingController _folderController = TextEditingController();
+
+  /// Idioma de transcrição escolhido.
+  late String _language = UserPreferences.defaultLanguage;
+
+  /// Qualidade do áudio em kbps.
+  late int _quality = 128;
+
+  /// Mantém as gravações no aparelho.
+  late bool _saveToDevice = true;
+
+  /// Filtros de captura.
+  late bool _noiseSuppress = true;
+  late bool _autoGain = true;
+  late bool _echoCancel = true;
+
+  /// Animação pesada da waveform.
+  late bool _animationsEnabled = false;
+
+  /// Destino dos arquivos de áudio.
+  late StorageLocation _storageLocation = StorageLocation.downloads;
 
   static const _languages = {
+    'pt-BR': 'Português (Brasil)',
     'en-US': 'English (US)',
     'en-GB': 'English (UK)',
-    'pt-BR': 'Português (Brasil)',
     'es-ES': 'Español',
+  };
+
+  /// Descrição de cada destino, mostrada na lista de seleção.
+  static const _storageDescriptions = {
+    StorageLocation.downloads:
+        'Pasta Download do aparelho — visível em qualquer gerenciador de arquivos',
+    StorageLocation.appExternal:
+        'Pasta do app no armazenamento externo — some se o app for desinstalado',
+    StorageLocation.private:
+        'Diretório privado do app — invisível fora do aplicativo',
   };
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_settings != null) return;
-    _settings = AppScope.of(context);
-    _nameController.text = _settings!.displayName;
-    _animationsEnabled = _settings!.animationsEnabled;
+    final settings = AppScope.of(context);
+    _settings = settings;
+
+    _nameController.text = settings.displayName;
+    _folderController.text = settings.customFolder;
+    _language = settings.transcriptionLanguage;
+    _quality = settings.audioQuality;
+    _saveToDevice = settings.keepOnDevice;
+    _noiseSuppress = settings.noiseSuppress;
+    _autoGain = settings.autoGain;
+    _echoCancel = settings.echoCancel;
+    _animationsEnabled = settings.animationsEnabled;
+    _storageLocation = settings.storageLocation;
   }
 
   /// Persiste o nome escolhido pelo usuário.
+  /// Rótulo curto de cada destino de áudio.
+  String _storageLabel(StorageLocation location) {
+    switch (location) {
+      case StorageLocation.downloads:
+        return 'Downloads do aparelho';
+      case StorageLocation.appExternal:
+        return 'Pasta do app (armazenamento externo)';
+      case StorageLocation.private:
+        return 'Diretório privado do app';
+    }
+  }
+
   Future<void> _saveName(String name) async {
     await _settings?.setDisplayName(name);
     if (!mounted) return;
     FocusScope.of(context).unfocus();
+  }
+
+  /// Troca o idioma de transcrição e persiste a escolha.
+  Future<void> _selectLanguage(String code) async {
+    setState(() => _language = code);
+    await _settings?.setTranscriptionLanguage(code);
+  }
+
+  /// Troca o destino dos arquivos de áudio e persiste a escolha.
+  Future<void> _selectStorage(StorageLocation location) async {
+    setState(() => _storageLocation = location);
+    await _settings?.setStorageLocation(location);
+  }
+
+  /// Persiste a pasta personalizada dentro do destino escolhido.
+  Future<void> _saveFolder(String folder) async {
+    await _settings?.setCustomFolder(folder);
+  }
+
+  /// Muda a qualidade do áudio e persiste a escolha.
+  Future<void> _setQuality(int value) async {
+    setState(() => _quality = value);
+    await _settings?.setAudioQuality(value);
+  }
+
+  /// Liga ou desliga a gravação dos filtros de captura.
+  Future<void> _toggleNoiseSuppress(bool value) async {
+    setState(() => _noiseSuppress = value);
+    await _settings?.setNoiseSuppress(value);
+  }
+
+  /// Liga ou desliga o ganho automático.
+  Future<void> _toggleAutoGain(bool value) async {
+    setState(() => _autoGain = value);
+    await _settings?.setAutoGain(value);
+  }
+
+  /// Liga ou desliga o cancelamento de eco.
+  Future<void> _toggleEchoCancel(bool value) async {
+    setState(() => _echoCancel = value);
+    await _settings?.setEchoCancel(value);
   }
 
   /// Liga ou desliga a animação pesada da waveform.
@@ -1544,7 +1664,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                   label: entry.value,
                   code: entry.key,
                   selected: _language == entry.key,
-                  onTap: () => setState(() => _language = entry.key),
+                  onTap: () => _selectLanguage(entry.key),
                 ),
               ),
             ),
@@ -1563,11 +1683,12 @@ class _SettingsSheetState extends State<_SettingsSheet> {
               children: [
                 Expanded(
                   child: Slider(
-                    value: _quality,
+                    value: _quality.toDouble(),
                     min: 64,
                     max: 256,
                     divisions: 3,
-                    onChanged: (v) => setState(() => _quality = v),
+                    label: '${_quality}k',
+                    onChanged: (v) => _setQuality(v.round()),
                   ),
                 ),
                 SizedBox(
@@ -1590,7 +1711,10 @@ class _SettingsSheetState extends State<_SettingsSheet> {
               title: 'Keep recordings on device',
               subtitle: 'Store every take in local storage',
               value: _saveToDevice,
-              onChanged: (v) => setState(() => _saveToDevice = v),
+              onChanged: (v) async {
+                setState(() => _saveToDevice = v);
+                await _settings?.setKeepOnDevice(v);
+              },
             ),
             const SizedBox(height: 10),
             _FilterToggle(
@@ -1599,6 +1723,92 @@ class _SettingsSheetState extends State<_SettingsSheet> {
               subtitle: 'Animated mesh while recording — heavier on battery',
               value: _animationsEnabled,
               onChanged: _toggleAnimations,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'AUDIO DESTINATION',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.0,
+                color: AppColors.textTertiary,
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Where the recordings are saved on this device.',
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.textTertiary,
+              ),
+            ),
+            const SizedBox(height: 10),
+            ...StorageLocation.values.map(
+              (location) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: _StorageOption(
+                  label: _storageLabel(location),
+                  description: _storageDescriptions[location] ?? '',
+                  selected: _storageLocation == location,
+                  onTap: () => _selectStorage(location),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'CUSTOM FOLDER',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.0,
+                color: AppColors.textTertiary,
+              ),
+            ),
+            const SizedBox(height: 10),
+            _NameField(
+              controller: _folderController,
+              hintText: 'Scroatt',
+              onSubmitted: _saveFolder,
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'Leave empty to use the default folder inside the destination.',
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.textTertiary,
+              ),
+            ),
+            const SizedBox(height: 22),
+            const Text(
+              'CAPTURE FILTERS',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.0,
+                color: AppColors.textTertiary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            _FilterToggle(
+              icon: AppIcons.mic,
+              title: 'Noise suppression',
+              subtitle: 'Reduce background hiss while recording',
+              value: _noiseSuppress,
+              onChanged: _toggleNoiseSuppress,
+            ),
+            _FilterToggle(
+              icon: AppIcons.volume,
+              title: 'Automatic gain',
+              subtitle: 'Keep the voice at a consistent level',
+              value: _autoGain,
+              onChanged: _toggleAutoGain,
+            ),
+            _FilterToggle(
+              icon: AppIcons.headphones,
+              title: 'Echo cancellation',
+              subtitle: 'Cut the echo of the room',
+              value: _echoCancel,
+              onChanged: _toggleEchoCancel,
             ),
             const SizedBox(height: 16),
             SizedBox(
@@ -1630,10 +1840,17 @@ class _SettingsSheetState extends State<_SettingsSheet> {
 /// Usa o mesmo vocabulário visual dos demais campos do app: fundo escuro
 /// elevado, borda sutil e foco em azul.
 class _NameField extends StatelessWidget {
-  const _NameField({required this.controller, required this.onSubmitted});
+  const _NameField({
+    required this.controller,
+    required this.onSubmitted,
+    this.hintText = 'How should we call you?',
+  });
 
   final TextEditingController controller;
   final ValueChanged<String> onSubmitted;
+
+  /// Texto de apoio exibido quando o campo está vazio.
+  final String hintText;
 
   @override
   Widget build(BuildContext context) {
@@ -1654,7 +1871,7 @@ class _NameField extends StatelessWidget {
       ),
       cursorColor: AppColors.accentBright,
       decoration: InputDecoration(
-        hintText: 'How should we call you?',
+        hintText: hintText,
         hintStyle: const TextStyle(
           fontSize: 15,
           color: AppColors.textTertiary,
@@ -1677,6 +1894,83 @@ class _NameField extends StatelessWidget {
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: AppColors.accentBright),
+        ),
+      ),
+    );
+  }
+}
+
+/// Opção de destino do áudio — título, descrição e marca de seleção.
+class _StorageOption extends StatelessWidget {
+  const _StorageOption({
+    required this.label,
+    required this.description,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final String description;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppColors.accent.withValues(alpha: 0.12)
+              : AppColors.surface.withValues(alpha: 0.45),
+          borderRadius: BorderRadius.circular(13),
+          border: Border.all(
+            color: selected ? AppColors.accentBright : AppColors.divider,
+          ),
+        ),
+        child: Row(
+          children: [
+            const AppIcon(
+              AppIcons.folder,
+              size: 17,
+              color: AppColors.textSecondary,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: selected
+                          ? AppColors.accentBright
+                          : AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    description,
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      height: 1.35,
+                      color: AppColors.textTertiary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (selected)
+              const Icon(
+                Icons.check,
+                size: 17,
+                color: AppColors.accentBright,
+              ),
+          ],
         ),
       ),
     );
