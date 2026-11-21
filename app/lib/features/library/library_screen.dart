@@ -24,6 +24,41 @@ class _LibraryScreenState extends State<LibraryScreen> {
   bool _loading = true;
   String _query = '';
 
+  /// Indica que a sincronizacao com os arquivos existentes esta em curso.
+  bool _syncing = false;
+
+  /// Procura arquivos de audio na pasta configurada e adiciona os que
+  /// ainda nao estao no indice.
+  Future<void> _sync() async {
+    if (_syncing) return;
+    setState(() => _syncing = true);
+    final added = await _settings?.syncWithExistingFiles() ?? 0;
+    if (!mounted) return;
+    setState(() => _syncing = false);
+    if (added == 0) {
+      _showMessage('Nenhum audio novo encontrado.');
+      return;
+    }
+    _showMessage(
+      added == 1
+          ? '1 gravacao adicionada.'
+          : '$added gravacoes adicionadas.',
+    );
+  }
+
+  /// Mostra uma mensagem breve no rodape da tela.
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -69,6 +104,14 @@ class _LibraryScreenState extends State<LibraryScreen> {
                           letterSpacing: -0.6,
                         ),
                       ),
+                    ),
+                    // Sincroniza a biblioteca com os arquivos de audio que
+                    // ja estavam salvos na pasta escolhida — gravacoes
+                    // copiadas para o aparelho por fora do app entram
+                    // na lista sem precisao de regravar.
+                    _SyncButton(
+                      busy: _syncing,
+                      onPressed: _sync,
                     ),
                     if (_recordings.isNotEmpty)
                       Container(
@@ -286,12 +329,96 @@ class _RecordingCard extends StatelessWidget {
                       color: AppColors.textSecondary,
                     ),
                   ),
+                  const SizedBox(height: 8),
+                  // Data, hora e tamanho do arquivo — as tres informacoes
+                  // que a biblioteca precisa mostrar para a gravacao ser
+                  // reconhecida sem abrir o editor.
+                  _MetaRow(recording: recording),
                 ],
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Botao que sincroniza a biblioteca com os arquivos ja salvos.
+class _SyncButton extends StatelessWidget {
+  const _SyncButton({required this.busy, required this.onPressed});
+
+  final bool busy;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: IconButton(
+        onPressed: busy ? null : onPressed,
+        tooltip: 'Sincronizar com os arquivos salvos',
+        icon: busy
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.accentBright,
+                ),
+              )
+            : const AppIcon(
+                AppIcons.refresh,
+                size: 18,
+                color: AppColors.textSecondary,
+              ),
+      ),
+    );
+  }
+}
+
+/// Linha de metadados do card: data, hora, tamanho e dono.
+class _MetaRow extends StatelessWidget {
+  const _MetaRow({required this.recording});
+
+  final Recording recording;
+
+  @override
+  Widget build(BuildContext context) {
+    final parts = <String>[
+      recording.formattedDate,
+      recording.formattedTime,
+      recording.formattedSize,
+    ];
+    if (recording.ownerName.isNotEmpty) {
+      parts.add(recording.ownerName);
+    }
+
+    return Wrap(
+      spacing: 10,
+      runSpacing: 4,
+      children: [
+        for (final part in parts)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.circle,
+                size: 3,
+                color: AppColors.textTertiary,
+              ),
+              const SizedBox(width: 5),
+              Text(
+                part,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textTertiary,
+                  fontFeatures: [FontFeature.tabularFigures()],
+                ),
+              ),
+            ],
+          ),
+      ],
     );
   }
 }
