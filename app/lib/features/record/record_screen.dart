@@ -378,7 +378,9 @@ class _RecordScreenState extends State<RecordScreen>
       amplitudePeaks: peaks,
       ownerName: settings?.displayName ?? '',
       fileSizeBytes: fileSize,
-      folder: fileStat?.parent.path ?? '',
+      folder: fileStat == null
+          ? ''
+          : File(fileStat.path).parent.path,
     );
 
     await settings?.saveRecording(recording);
