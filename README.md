@@ -67,14 +67,17 @@ Lista de todas as gravações com capa, título, prévia da transcrição e dura
 
 | Camada | Escolha |
 |---|---|
-| Framework | Flutter 3.35.7 (Dart 3.9.2) |
+| Framework | Flutter 3.50.1 (Dart 3.14) — exigido pelo `audio_decoder` |
 | Gravação | [`record`](https://pub.dev/packages/record) 6.x — AAC-LC nativo do Android |
 | Reprodução | [`just_audio`](https://pub.dev/packages/just_audio) 0.9.x |
+| Edição de áudio | [`audio_decoder`](https://pub.dev/packages/audio_decoder) 0.8.x — decodifica via `MediaCodec`, sem FFmpeg |
 | Permissões | [`permission_handler`](https://pub.dev/packages/permission_handler) 11.x |
+| Notificações | [`flutter_local_notifications`](https://pub.dev/packages/flutter_local_notifications) 18.x — ações de pausa/continuar/parar |
 | Persistência | [`shared_preferences`](https://pub.dev/packages/shared_preferences) 2.x |
+| Caminhos | [`path_provider`](https://pub.dev/packages/path_provider) 2.x — Downloads, pasta externa e diretório privado |
 | Ícones | [`flutter_svg`](https://pub.dev/packages/flutter_svg) + assets **Feather Icons** (MIT) |
 | Tipografia | **Inter** (SIL Open Font License), empacotada como `.ttf` |
-| Android | Gradle 8.10.2, AGP 8.7.0, Kotlin 2.1.0, `minSdk` 24 |
+| Android | Gradle 9.5.0, AGP 9.3.1, Kotlin 2.4.20, `minSdk` 23 |
 
 ---
 
