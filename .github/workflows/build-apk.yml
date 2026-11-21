@@ -404,31 +404,58 @@ jobs:
               echo "::error title=Test::${line:0:900}"
             done < <(grep -E "\[E\]|Some tests failed|Expected:|Actual:" test.log | head -n 12)
           fi
-          # Publica o log dos testes no repo, com o mesmo padrao de git
-          # usado pelo step de log do build.
-          WORK="$(mktemp -d)"
+          # Publica o log dos testes no repo pela API do GitHub, que
+          # funciona mesmo quando o `git push` e bloqueado.
           {
             echo "## Testes - run ${{ github.run_id }}"
             echo
             echo '```'
             tail -n 200 test.log
             echo '```'
-          } > "$WORK/testes-${{ github.run_id }}.md"
-          rm -rf "$WORK/repo"
-          git clone --depth=1 --branch "${{ github.ref_name }}" \
-            "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" \
-            "$WORK/repo" 2>&1 | tail -3 || true
-          if [ -d "$WORK/repo/.git" ]; then
-            cd "$WORK/repo"
-            mkdir -p ci-logs
-            cp "$WORK/testes-${{ github.run_id }}.md" \
-              "ci-logs/testes-${{ github.run_id }}.md"
-            git add -A ci-logs
-            git -c user.name="github-actions[bot]" \
-                -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
-                commit -m "ci: log dos testes ${{ github.run_id }}" || true
-            git push origin "HEAD:refs/heads/${{ github.ref_name }}" 2>&1 | tail -5 || true
-          fi
+          } > testes.md
+          python3 - <<'PYEOF'
+          import base64, json, os, urllib.request
+
+          repo = os.environ["GITHUB_REPOSITORY"]
+          ref = os.environ["GITHUB_REF_NAME"]
+          run = os.environ["GITHUB_RUN_ID"]
+          token = os.environ["GITHUB_TOKEN"]
+          path = "ci-logs/testes-%s.md" % run
+
+          with open("testes.md", "rb") as fh:
+              content = base64.b64encode(fh.read()).decode()
+
+          headers = {
+              "Authorization": "Bearer " + token,
+              "Accept": "application/vnd.github+json",
+              "X-GitHub-Api-Version": "2022-11-28",
+              "Content-Type": "application/json",
+          }
+          base = "https://api.github.com/repos/%s/contents/%s" % (repo, path)
+
+          def call(url, method="GET", body=None):
+              data = json.dumps(body).encode() if body is not None else None
+              req = urllib.request.Request(url, data=data, method=method,
+                                           headers=headers)
+              with urllib.request.urlopen(req, timeout=60) as resp:
+                  return json.loads(resp.read().decode() or "{}")
+
+          sha = None
+          try:
+              sha = call(base + "?ref=" + ref).get("sha")
+          except Exception:
+              sha = None
+
+          body = {
+              "message": "ci: log dos testes " + run,
+              "content": content,
+              "branch": ref,
+          }
+          if sha:
+              body["sha"] = sha
+          call(base, method="PUT", body=body)
+          print("log dos testes publicado")
+          PYEOF
 
           # Os testes nao derrubam o build: o APK ja foi gerado e
           # publicado, e o resultado dos testes aparece no resumo.
