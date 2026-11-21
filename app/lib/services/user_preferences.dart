@@ -113,8 +113,7 @@ class UserPreferences {
   Future<void> setCustomFolder(String folder) async {
     final cleaned = folder
         .trim()
-        .replaceAll(RegExp(r'[\\/:*?"<>|]'), '')
-        .replaceAll(RegExp(r'\s+'), '_');
+        .replaceAll(RegExp(r'[\\/:*?"<>|\s]+'), '_');
     if (cleaned.isEmpty) {
       await _preferences?.remove(_customFolderKey);
       return;
