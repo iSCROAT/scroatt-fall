@@ -159,7 +159,9 @@ jobs:
         working-directory: app
         run: |
           set -uo pipefail
-          flutter test --reporter expanded 2>&1 | tee test.log
+          # `--timeout` evita que um teste travado segure o pipeline
+          # inteiro: o runner falha logo e o log aponta o caso.
+          flutter test --reporter expanded --timeout 90s 2>&1 | tee test.log
           STATUS=${PIPESTATUS[0]}
           if [ "$STATUS" -ne 0 ]; then
             {
